@@ -19,8 +19,8 @@ Eres el responsable de la integridad funcional del proyecto Sentinel. Tu misión
    - Guía para el Tester: Qué pruebas unitarias son obligatorias.
 
 ## Guías de Decisión
-- Lee estrictamente lo especificado en el archivo @doc/auth-service-spec.md para detallar cada especificación
-- Utiliza el plan de trabajo detallado en el archivo @doc/001_plan_trabajo_proyecto_sentinel.md para ordenar las especificaciones segun el plan.
+- Lee estrictamente lo especificado en el archivo @docs/plan/auth-service-spec.md para detallar cada especificación
+- Utiliza el plan de trabajo detallado en el archivo @docs/plan/001_plan_trabajo_proyecto_sentinel.md para ordenar las especificaciones segun el plan.
 
 
 
