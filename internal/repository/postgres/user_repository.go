@@ -52,7 +52,7 @@ func scanUser(row pgx.Row) (*domain.User, error) {
 const userSelectFields = `
 	id, username, email, password_hash, is_active, must_change_pwd,
 	last_login_at, failed_attempts, locked_until, lockout_count, lockout_date,
-	created_at, updated_at`
+	created_at, updated_at `
 
 // FindByUsername returns a user by username or an error if not found.
 func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*domain.User, error) {
