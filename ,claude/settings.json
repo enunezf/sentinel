@@ -1,0 +1,60 @@
+{
+    "$schema": "https://code.claude.com/settings.schema.json",
+    "model": "claude-sonnet-4-6",
+    "permissions": {
+        "allow": [
+            "Bash(go test *)",
+            "Bash(go fmt *)",
+            "Bash(go build *)",
+            "Bash(docker-compose *)"
+        ],
+        "deny": [
+            "Read(./.env)",
+            "Read(./keys/*.pem)",
+            "Write(./keys/*.pem)",
+            "Bash(rm -rf migrations/)"
+        ],
+        "defaultMode": "acceptEdits"
+    },
+    "hooks": {
+        "PostToolUse": [
+            {
+                "matcher": "Edit|Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "go fmt ./...",
+                        "statusMessage": "Formateando código Go..."
+                    }
+                ]
+            }
+        ],
+        "PreToolUse": [
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "if echo \"$CLAUDE_HOOK_INPUT\" | grep -q \"rm \"; then exit 2; fi",
+                        "statusMessage": "Validando comando Bash de borrado..."
+                    }
+                ]
+            }
+        ],
+        "TaskCompleted": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "go test ./internal/domain/... -short",
+                        "statusMessage": "Validando lógica de dominio antes de finalizar..."
+                    }
+                ]
+            }
+        ]
+    },
+    "env": {
+        "BASH_DEFAULT_TIMEOUT_MS": "30000",
+        "MAX_MCP_OUTPUT_TOKENS": "15000"
+    }
+}
