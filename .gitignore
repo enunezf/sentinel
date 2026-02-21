@@ -1,5 +1,5 @@
 bin/
-server
+/server
 keys/*.pem
 *.env
 .env
