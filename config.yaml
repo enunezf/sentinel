@@ -1,0 +1,41 @@
+server:
+  port: 8080
+  read_timeout: 30s
+  write_timeout: 30s
+  graceful_shutdown_timeout: 15s
+
+database:
+  host: ${DB_HOST}
+  port: 5432
+  name: ${DB_NAME}
+  user: ${DB_USER}
+  password: ${DB_PASSWORD}
+  max_open_conns: 50
+  max_idle_conns: 10
+  conn_max_lifetime: 5m
+
+redis:
+  addr: ${REDIS_ADDR}
+  password: ${REDIS_PASSWORD}
+  db: 0
+
+jwt:
+  private_key_path: ${JWT_PRIVATE_KEY_PATH}
+  public_key_path: ${JWT_PUBLIC_KEY_PATH}
+  access_token_ttl: 60m
+  refresh_token_ttl_web: 168h
+  refresh_token_ttl_mobile: 720h
+
+security:
+  max_failed_attempts: 5
+  lockout_duration: 15m
+  bcrypt_cost: 12
+  password_history: 5
+
+bootstrap:
+  admin_user: ${BOOTSTRAP_ADMIN_USER}
+  admin_password: ${BOOTSTRAP_ADMIN_PASSWORD}
+
+logging:
+  level: info
+  format: json
