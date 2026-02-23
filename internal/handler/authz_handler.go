@@ -24,6 +24,21 @@ type verifyRequest struct {
 }
 
 // Verify handles POST /authz/verify.
+//
+// @Summary     Verificar permiso
+// @Description Verifica si el usuario autenticado tiene un permiso específico, opcionalmente en un centro de costo.
+// @Tags        Autorización
+// @Accept      json
+// @Produce     json
+// @Param       X-App-Key      header   string                          true  "Clave secreta de la aplicación"
+// @Param       Authorization  header   string                          true  "Token JWT. Formato: Bearer {token}"
+// @Param       body           body     SwaggerVerifyPermissionRequest  true  "Permiso a verificar"
+// @Success     200            {object} SwaggerVerifyResponse           "Resultado de la verificación"
+// @Failure     400            {object} SwaggerErrorResponse            "Datos inválidos"
+// @Failure     401            {object} SwaggerErrorResponse            "No autenticado"
+// @Security    BearerAuth
+// @Security    AppKeyAuth
+// @Router      /authz/verify [post]
 func (h *AuthzHandler) Verify(c *fiber.Ctx) error {
 	claims := middleware.GetClaims(c)
 	if claims == nil {
@@ -50,6 +65,16 @@ func (h *AuthzHandler) Verify(c *fiber.Ctx) error {
 }
 
 // MePermissions handles GET /authz/me/permissions.
+//
+// @Summary     Mis permisos
+// @Description Retorna todos los roles, permisos y centros de costo del usuario autenticado para la aplicación actual.
+// @Tags        Autorización
+// @Produce     json
+// @Param       Authorization  header   string                        true  "Token JWT. Formato: Bearer {token}"
+// @Success     200            {object} SwaggerMePermissionsResponse  "Permisos del usuario"
+// @Failure     401            {object} SwaggerErrorResponse          "No autenticado"
+// @Security    BearerAuth
+// @Router      /authz/me/permissions [get]
 func (h *AuthzHandler) MePermissions(c *fiber.Ctx) error {
 	claims := middleware.GetClaims(c)
 	if claims == nil {
@@ -65,6 +90,16 @@ func (h *AuthzHandler) MePermissions(c *fiber.Ctx) error {
 }
 
 // PermissionsMap handles GET /authz/permissions-map.
+//
+// @Summary     Mapa de permisos
+// @Description Retorna el mapa completo de permisos de la aplicación, firmado con RSA-SHA256.
+// @Tags        Autorización
+// @Produce     json
+// @Param       X-App-Key  header   string                  true  "Clave secreta de la aplicación"
+// @Success     200        {object} map[string]interface{}  "Mapa de permisos firmado"
+// @Failure     401        {object} SwaggerErrorResponse    "Aplicación no encontrada"
+// @Security    AppKeyAuth
+// @Router      /authz/permissions-map [get]
 func (h *AuthzHandler) PermissionsMap(c *fiber.Ctx) error {
 	app := middleware.GetApp(c)
 	if app == nil {
@@ -80,6 +115,16 @@ func (h *AuthzHandler) PermissionsMap(c *fiber.Ctx) error {
 }
 
 // PermissionsMapVersion handles GET /authz/permissions-map/version.
+//
+// @Summary     Versión del mapa de permisos
+// @Description Retorna la versión actual (hash) del mapa de permisos de la aplicación.
+// @Tags        Autorización
+// @Produce     json
+// @Param       X-App-Key  header   string                                true  "Clave secreta de la aplicación"
+// @Success     200        {object} SwaggerPermissionsMapVersionResponse  "Versión del mapa de permisos"
+// @Failure     401        {object} SwaggerErrorResponse                  "Aplicación no encontrada"
+// @Security    AppKeyAuth
+// @Router      /authz/permissions-map/version [get]
 func (h *AuthzHandler) PermissionsMapVersion(c *fiber.Ctx) error {
 	app := middleware.GetApp(c)
 	if app == nil {

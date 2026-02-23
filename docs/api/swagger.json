@@ -1,0 +1,3628 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Servicio centralizado de autenticación y autorización con JWT RS256, RBAC y auditoría.",
+        "title": "Sentinel API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/.well-known/jwks.json": {
+            "get": {
+                "description": "Retorna las claves públicas RSA en formato JWKS para verificación de tokens JWT.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sistema"
+                ],
+                "summary": "Claves públicas JWKS",
+                "responses": {
+                    "200": {
+                        "description": "Conjunto de claves JWKS",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/applications": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Retorna la lista paginada de aplicaciones cliente registradas en el sistema.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Aplicaciones"
+                ],
+                "summary": "Listar aplicaciones",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de página (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Elementos por página (default: 20, max: 100)",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Búsqueda por nombre o slug",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filtrar por estado activo",
+                        "name": "is_active",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista paginada de aplicaciones",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerPaginatedApplications"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Registra una nueva aplicación cliente en el sistema y genera su clave secreta.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Aplicaciones"
+                ],
+                "summary": "Crear aplicación",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos de la nueva aplicación",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerCreateApplicationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Aplicación creada exitosamente",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerApplicationItem"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos o slug con formato incorrecto",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Ya existe una aplicación con este slug",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/applications/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Retorna los detalles de una aplicación, incluyendo su clave secreta.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Aplicaciones"
+                ],
+                "summary": "Obtener aplicación",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID de la aplicación (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalles de la aplicación",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerApplicationItem"
+                        }
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Aplicación no encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Actualiza el nombre y/o estado de una aplicación. La aplicación del sistema no puede ser modificada.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Aplicaciones"
+                ],
+                "summary": "Actualizar aplicación",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID de la aplicación (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Campos a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerUpdateApplicationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Aplicación actualizada",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerApplicationItem"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso o aplicación de sistema",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Aplicación no encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/applications/{id}/rotate-key": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Genera una nueva clave secreta para la aplicación, invalidando la anterior. La aplicación del sistema no puede rotar su clave por esta vía.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Aplicaciones"
+                ],
+                "summary": "Rotar clave de aplicación",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID de la aplicación (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Nueva clave generada",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerRotateKeyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso o aplicación de sistema",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Aplicación no encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/audit-logs": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Retorna la lista paginada de eventos de auditoría. Permite filtrar por tipo de evento, usuario, actor, aplicación, fechas y resultado.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auditoría"
+                ],
+                "summary": "Listar registros de auditoría",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de página (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Elementos por página (default: 20, max: 100)",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar por tipo de evento (ej: LOGIN_SUCCESS)",
+                        "name": "event_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar por ID de usuario (UUID)",
+                        "name": "user_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar por ID del actor (UUID)",
+                        "name": "actor_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar por ID de aplicación (UUID)",
+                        "name": "application_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Fecha inicio (RFC3339, ej: 2025-01-01T00:00:00Z)",
+                        "name": "from_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Fecha fin (RFC3339, ej: 2025-12-31T23:59:59Z)",
+                        "name": "to_date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filtrar por resultado (true=exitoso, false=fallido)",
+                        "name": "success",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista paginada de registros de auditoría",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerPaginatedAuditLogs"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/cost-centers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Retorna la lista paginada de centros de costo de la aplicación.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Centros de Costo"
+                ],
+                "summary": "Listar centros de costo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de página (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Elementos por página (default: 20, max: 100)",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista paginada de centros de costo",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerPaginatedCostCenters"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Crea un nuevo centro de costo en la aplicación actual.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Centros de Costo"
+                ],
+                "summary": "Crear centro de costo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del nuevo centro de costo",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerCreateCostCenterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Centro de costo creado exitosamente",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerCostCenterItem"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/cost-centers/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Actualiza el nombre y/o estado de un centro de costo existente.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Centros de Costo"
+                ],
+                "summary": "Actualizar centro de costo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del centro de costo (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Campos a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerUpdateCostCenterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Centro de costo actualizado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerCostCenterItem"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Centro de costo no encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/permissions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Retorna la lista paginada de permisos de la aplicación.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Permisos"
+                ],
+                "summary": "Listar permisos",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de página (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Elementos por página (default: 20, max: 100)",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista paginada de permisos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerPaginatedPermissions"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Crea un nuevo permiso en la aplicación actual.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Permisos"
+                ],
+                "summary": "Crear permiso",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del nuevo permiso",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerCreatePermissionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Permiso creado exitosamente",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerPermissionItem"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/permissions/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Elimina un permiso del sistema. Falla si el permiso está asignado a roles o usuarios.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Permisos"
+                ],
+                "summary": "Eliminar permiso",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del permiso (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Permiso eliminado exitosamente"
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/roles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Retorna la lista paginada de roles de la aplicación.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Listar roles",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de página (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Elementos por página (default: 20, max: 100)",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista paginada de roles",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerPaginatedRoles"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Crea un nuevo rol en la aplicación actual.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Crear rol",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del nuevo rol",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerCreateRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Rol creado exitosamente",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerRoleItem"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/roles/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Retorna los detalles de un rol, incluyendo sus permisos y la cantidad de usuarios asignados.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Obtener rol",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del rol (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalles del rol",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Rol no encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Actualiza el nombre y/o descripción de un rol existente.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Actualizar rol",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del rol (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Campos a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerUpdateRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Rol actualizado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerRoleItem"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Rol no encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Desactiva un rol (no se elimina físicamente). Los usuarios con este rol pierden los permisos asociados.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Eliminar rol",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del rol (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Rol eliminado exitosamente"
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/roles/{id}/permissions": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Asigna uno o más permisos a un rol existente.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Agregar permisos a rol",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del rol (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Permisos a asignar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerAddRolePermissionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Permisos asignados al rol",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerAssignedCountResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/roles/{id}/permissions/{pid}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Elimina un permiso de un rol existente.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Remover permiso de rol",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del rol (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del permiso (UUID)",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Permiso removido del rol exitosamente"
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Retorna la lista paginada de usuarios. Acepta filtros por búsqueda de texto e estado activo.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usuarios"
+                ],
+                "summary": "Listar usuarios",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de página (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Elementos por página (default: 20, max: 100)",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Búsqueda por username o email",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filtrar por estado activo",
+                        "name": "is_active",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lista paginada de usuarios",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerPaginatedUsers"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Crea un nuevo usuario en el sistema. La contraseña debe cumplir la política de seguridad.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usuarios"
+                ],
+                "summary": "Crear usuario",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos del nuevo usuario",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerCreateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Usuario creado exitosamente",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerUserItem"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos o política de contraseña",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Retorna los detalles completos de un usuario por su ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usuarios"
+                ],
+                "summary": "Obtener usuario",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del usuario (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detalles del usuario",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerUserItem"
+                        }
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Actualiza los datos de un usuario. Solo se modifican los campos enviados.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usuarios"
+                ],
+                "summary": "Actualizar usuario",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del usuario (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Campos a actualizar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerUpdateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Usuario actualizado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerUserItem"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Usuario no encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}/cost-centers": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Asigna uno o más centros de costo a un usuario, reemplazando las asignaciones previas.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usuarios"
+                ],
+                "summary": "Asignar centros de costo a usuario",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del usuario (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Centros de costo a asignar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerAssignCostCentersRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Centros de costo asignados",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerAssignedCountResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}/permissions": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Asigna un permiso directo a un usuario, opcionalmente con período de vigencia.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usuarios"
+                ],
+                "summary": "Asignar permiso a usuario",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del usuario (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos de la asignación",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerAssignPermissionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Permiso asignado exitosamente",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}/permissions/{pid}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Elimina la asignación directa de un permiso a un usuario.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usuarios"
+                ],
+                "summary": "Revocar permiso de usuario",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del usuario (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID de la asignación de permiso (UUID)",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Permiso revocado exitosamente"
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}/reset-password": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Genera una contraseña temporal para el usuario y lo obliga a cambiarla en el próximo inicio de sesión.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usuarios"
+                ],
+                "summary": "Restablecer contraseña",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del usuario (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Contraseña temporal generada",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerResetPasswordResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}/roles": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Asigna un rol a un usuario, opcionalmente con período de vigencia.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usuarios"
+                ],
+                "summary": "Asignar rol a usuario",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del usuario (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Datos de la asignación",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerAssignRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Rol asignado exitosamente",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}/roles/{rid}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Elimina la asignación de un rol a un usuario.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usuarios"
+                ],
+                "summary": "Revocar rol de usuario",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del usuario (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID de la asignación de rol (UUID)",
+                        "name": "rid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Rol revocado exitosamente"
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}/unlock": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Desbloquea una cuenta de usuario que ha sido bloqueada por intentos fallidos de acceso.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Usuarios"
+                ],
+                "summary": "Desbloquear usuario",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID del usuario (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Usuario desbloqueado exitosamente"
+                    },
+                    "400": {
+                        "description": "ID inválido",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Sin permiso",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/change-password": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Cambia la contraseña del usuario autenticado. Requiere la contraseña actual.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Cambiar contraseña",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Contraseñas actual y nueva",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerChangePasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Contraseña cambiada exitosamente"
+                    },
+                    "400": {
+                        "description": "Datos inválidos o política de contraseña",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "security": [
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Autentica un usuario con credenciales y retorna tokens JWT de acceso y refresco.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Iniciar sesión",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Credenciales de acceso",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerLoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Autenticación exitosa",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerLoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Credenciales incorrectas o aplicación no encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Cuenta inactiva o bloqueada",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Invalida el token de refresco del usuario autenticado.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Cerrar sesión",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Sesión cerrada exitosamente"
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "security": [
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Renueva el token de acceso usando un token de refresco válido.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Autenticación"
+                ],
+                "summary": "Renovar tokens",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Token de refresco",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerRefreshRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tokens renovados exitosamente",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerTokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Token inválido, expirado o revocado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/authz/me/permissions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retorna todos los roles, permisos y centros de costo del usuario autenticado para la aplicación actual.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Autorización"
+                ],
+                "summary": "Mis permisos",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Permisos del usuario",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerMePermissionsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/authz/permissions-map": {
+            "get": {
+                "security": [
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Retorna el mapa completo de permisos de la aplicación, firmado con RSA-SHA256.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Autorización"
+                ],
+                "summary": "Mapa de permisos",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Mapa de permisos firmado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Aplicación no encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/authz/permissions-map/version": {
+            "get": {
+                "security": [
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Retorna la versión actual (hash) del mapa de permisos de la aplicación.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Autorización"
+                ],
+                "summary": "Versión del mapa de permisos",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Versión del mapa de permisos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerPermissionsMapVersionResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Aplicación no encontrada",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/authz/verify": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "AppKeyAuth": []
+                    }
+                ],
+                "description": "Verifica si el usuario autenticado tiene un permiso específico, opcionalmente en un centro de costo.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Autorización"
+                ],
+                "summary": "Verificar permiso",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clave secreta de la aplicación",
+                        "name": "X-App-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Token JWT. Formato: Bearer {token}",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Permiso a verificar",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerVerifyPermissionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Resultado de la verificación",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerVerifyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Datos inválidos",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "No autenticado",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SwaggerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Verifica el estado de salud del servicio y sus dependencias (PostgreSQL y Redis).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sistema"
+                ],
+                "summary": "Estado del servicio",
+                "responses": {
+                    "200": {
+                        "description": "Servicio operativo",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_enunezf_sentinel_internal_handler.SwaggerHealthResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Servicio degradado",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_enunezf_sentinel_internal_handler.SwaggerHealthResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "github_com_enunezf_sentinel_internal_handler.SwaggerHealthChecks": {
+            "type": "object",
+            "properties": {
+                "postgresql": {
+                    "type": "string",
+                    "example": "ok"
+                },
+                "redis": {
+                    "type": "string",
+                    "example": "ok"
+                }
+            }
+        },
+        "github_com_enunezf_sentinel_internal_handler.SwaggerHealthResponse": {
+            "type": "object",
+            "properties": {
+                "checks": {
+                    "$ref": "#/definitions/github_com_enunezf_sentinel_internal_handler.SwaggerHealthChecks"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "healthy"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "1.0.0"
+                }
+            }
+        },
+        "internal_handler.SwaggerAddRolePermissionRequest": {
+            "type": "object",
+            "properties": {
+                "permission_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "550e8400-e29b-41d4-a716-446655440000"
+                    ]
+                }
+            }
+        },
+        "internal_handler.SwaggerApplicationItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2025-01-01T00:00:00Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "is_system": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Mi Aplicación"
+                },
+                "slug": {
+                    "type": "string",
+                    "example": "mi-aplicacion"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2025-01-15T10:30:00Z"
+                }
+            }
+        },
+        "internal_handler.SwaggerAssignCostCentersRequest": {
+            "type": "object",
+            "properties": {
+                "cost_center_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "550e8400-e29b-41d4-a716-446655440000"
+                    ]
+                },
+                "valid_from": {
+                    "type": "string",
+                    "example": "2025-01-01T00:00:00Z"
+                },
+                "valid_until": {
+                    "type": "string",
+                    "example": "2025-12-31T23:59:59Z"
+                }
+            }
+        },
+        "internal_handler.SwaggerAssignPermissionRequest": {
+            "type": "object",
+            "properties": {
+                "permission_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "valid_from": {
+                    "type": "string",
+                    "example": "2025-01-01T00:00:00Z"
+                },
+                "valid_until": {
+                    "type": "string",
+                    "example": "2025-12-31T23:59:59Z"
+                }
+            }
+        },
+        "internal_handler.SwaggerAssignRoleRequest": {
+            "type": "object",
+            "properties": {
+                "role_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "valid_from": {
+                    "type": "string",
+                    "example": "2025-01-01T00:00:00Z"
+                },
+                "valid_until": {
+                    "type": "string",
+                    "example": "2025-12-31T23:59:59Z"
+                }
+            }
+        },
+        "internal_handler.SwaggerAssignedCountResponse": {
+            "type": "object",
+            "properties": {
+                "assigned": {
+                    "type": "integer",
+                    "example": 3
+                }
+            }
+        },
+        "internal_handler.SwaggerAuditLogItem": {
+            "type": "object",
+            "properties": {
+                "actor_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "application_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2025-01-15T10:30:00Z"
+                },
+                "event_type": {
+                    "type": "string",
+                    "example": "LOGIN_SUCCESS"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "ip_address": {
+                    "type": "string",
+                    "example": "192.168.1.100"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "internal_handler.SwaggerChangePasswordRequest": {
+            "type": "object",
+            "properties": {
+                "current_password": {
+                    "type": "string",
+                    "example": "Admin@Local1!"
+                },
+                "new_password": {
+                    "type": "string",
+                    "example": "NuevaClave@2025!"
+                }
+            }
+        },
+        "internal_handler.SwaggerCostCenterItem": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "CC-001"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2025-01-01T00:00:00Z"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Centro de Costo Operaciones"
+                }
+            }
+        },
+        "internal_handler.SwaggerCreateApplicationRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "Mi Aplicación"
+                },
+                "slug": {
+                    "type": "string",
+                    "example": "mi-aplicacion"
+                }
+            }
+        },
+        "internal_handler.SwaggerCreateCostCenterRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "CC-001"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Centro de Costo Operaciones"
+                }
+            }
+        },
+        "internal_handler.SwaggerCreatePermissionRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "admin.reportes.read"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Lectura de reportes administrativos"
+                },
+                "scope_type": {
+                    "type": "string",
+                    "enum": [
+                        "global",
+                        "module",
+                        "resource",
+                        "action"
+                    ],
+                    "example": "module"
+                }
+            }
+        },
+        "internal_handler.SwaggerCreateRoleRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Rol de supervisor de operaciones"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Supervisor"
+                }
+            }
+        },
+        "internal_handler.SwaggerCreateUserRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "jdoe@empresa.com"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "Clave@Segura1!"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "jdoe"
+                }
+            }
+        },
+        "internal_handler.SwaggerErrorDetail": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "VALIDATION_ERROR"
+                },
+                "details": {},
+                "message": {
+                    "type": "string",
+                    "example": "campo requerido"
+                }
+            }
+        },
+        "internal_handler.SwaggerErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/internal_handler.SwaggerErrorDetail"
+                }
+            }
+        },
+        "internal_handler.SwaggerLoginRequest": {
+            "type": "object",
+            "properties": {
+                "client_type": {
+                    "type": "string",
+                    "enum": [
+                        "web",
+                        "mobile",
+                        "desktop"
+                    ],
+                    "example": "web"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "Admin@Local1!"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        },
+        "internal_handler.SwaggerLoginResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+                },
+                "expires_in": {
+                    "type": "integer",
+                    "example": 3600
+                },
+                "refresh_token": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "token_type": {
+                    "type": "string",
+                    "example": "Bearer"
+                },
+                "user": {
+                    "$ref": "#/definitions/internal_handler.SwaggerLoginUser"
+                }
+            }
+        },
+        "internal_handler.SwaggerLoginUser": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "admin@empresa.com"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "must_change_password": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "username": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        },
+        "internal_handler.SwaggerMePermissionsResponse": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "string",
+                    "example": "sentinel"
+                },
+                "cost_centers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "temporary_roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "internal_handler.SwaggerPaginatedApplications": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.SwaggerApplicationItem"
+                    }
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "page_size": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "total_pages": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "internal_handler.SwaggerPaginatedAuditLogs": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.SwaggerAuditLogItem"
+                    }
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "page_size": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "total_pages": {
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
+        "internal_handler.SwaggerPaginatedCostCenters": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.SwaggerCostCenterItem"
+                    }
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "page_size": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 8
+                },
+                "total_pages": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "internal_handler.SwaggerPaginatedPermissions": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.SwaggerPermissionItem"
+                    }
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "page_size": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 15
+                },
+                "total_pages": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "internal_handler.SwaggerPaginatedRoles": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.SwaggerRoleItem"
+                    }
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "page_size": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "total_pages": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "internal_handler.SwaggerPaginatedUsers": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.SwaggerUserItem"
+                    }
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "page_size": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 42
+                },
+                "total_pages": {
+                    "type": "integer",
+                    "example": 3
+                }
+            }
+        },
+        "internal_handler.SwaggerPermissionItem": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "admin.users.read"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2025-01-01T00:00:00Z"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Lectura de usuarios"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "scope_type": {
+                    "type": "string",
+                    "example": "module"
+                }
+            }
+        },
+        "internal_handler.SwaggerPermissionsMapVersionResponse": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "string",
+                    "example": "sentinel"
+                },
+                "generated_at": {
+                    "type": "string",
+                    "example": "2025-01-15T10:30:00Z"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "abc123def456"
+                }
+            }
+        },
+        "internal_handler.SwaggerRefreshRequest": {
+            "type": "object",
+            "properties": {
+                "refresh_token": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "internal_handler.SwaggerResetPasswordResponse": {
+            "type": "object",
+            "properties": {
+                "temporary_password": {
+                    "type": "string",
+                    "example": "TempPass@2025!"
+                }
+            }
+        },
+        "internal_handler.SwaggerRoleItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2025-01-01T00:00:00Z"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Rol de administrador del sistema"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "is_system": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Administrador"
+                }
+            }
+        },
+        "internal_handler.SwaggerRotateKeyResponse": {
+            "type": "object",
+            "properties": {
+                "secret_key": {
+                    "type": "string",
+                    "example": "abc123def456ghi789jkl012mno345pqr678stu901vwx234yz"
+                }
+            }
+        },
+        "internal_handler.SwaggerTokenResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+                },
+                "expires_in": {
+                    "type": "integer",
+                    "example": 3600
+                },
+                "refresh_token": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "token_type": {
+                    "type": "string",
+                    "example": "Bearer"
+                }
+            }
+        },
+        "internal_handler.SwaggerUpdateApplicationRequest": {
+            "type": "object",
+            "properties": {
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Mi Aplicación Actualizada"
+                }
+            }
+        },
+        "internal_handler.SwaggerUpdateCostCenterRequest": {
+            "type": "object",
+            "properties": {
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Operaciones Actualizado"
+                }
+            }
+        },
+        "internal_handler.SwaggerUpdateRoleRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Descripción actualizada"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Supervisor Senior"
+                }
+            }
+        },
+        "internal_handler.SwaggerUpdateUserRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "nuevo@empresa.com"
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "username": {
+                    "type": "string",
+                    "example": "jdoe_nuevo"
+                }
+            }
+        },
+        "internal_handler.SwaggerUserItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2025-01-01T00:00:00Z"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "jdoe@empresa.com"
+                },
+                "failed_attempts": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "last_login_at": {
+                    "type": "string",
+                    "example": "2025-01-15T10:30:00Z"
+                },
+                "locked_until": {
+                    "type": "string"
+                },
+                "must_change_pwd": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "username": {
+                    "type": "string",
+                    "example": "jdoe"
+                }
+            }
+        },
+        "internal_handler.SwaggerVerifyPermissionRequest": {
+            "type": "object",
+            "properties": {
+                "cost_center_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "permission": {
+                    "type": "string",
+                    "example": "admin.users.read"
+                }
+            }
+        },
+        "internal_handler.SwaggerVerifyResponse": {
+            "type": "object",
+            "properties": {
+                "allowed": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "evaluated_at": {
+                    "type": "string",
+                    "example": "2025-01-15T10:30:00Z"
+                },
+                "permission": {
+                    "type": "string",
+                    "example": "admin.users.read"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "AppKeyAuth": {
+            "description": "Clave secreta de la aplicación cliente",
+            "type": "apiKey",
+            "name": "X-App-Key",
+            "in": "header"
+        },
+        "BearerAuth": {
+            "description": "Token JWT de acceso. Formato: \"Bearer {token}\"",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

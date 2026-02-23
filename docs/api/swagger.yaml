@@ -1,0 +1,2401 @@
+basePath: /
+definitions:
+  github_com_enunezf_sentinel_internal_handler.SwaggerHealthChecks:
+    properties:
+      postgresql:
+        example: ok
+        type: string
+      redis:
+        example: ok
+        type: string
+    type: object
+  github_com_enunezf_sentinel_internal_handler.SwaggerHealthResponse:
+    properties:
+      checks:
+        $ref: '#/definitions/github_com_enunezf_sentinel_internal_handler.SwaggerHealthChecks'
+      status:
+        example: healthy
+        type: string
+      version:
+        example: 1.0.0
+        type: string
+    type: object
+  internal_handler.SwaggerAddRolePermissionRequest:
+    properties:
+      permission_ids:
+        example:
+        - 550e8400-e29b-41d4-a716-446655440000
+        items:
+          type: string
+        type: array
+    type: object
+  internal_handler.SwaggerApplicationItem:
+    properties:
+      created_at:
+        example: "2025-01-01T00:00:00Z"
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      is_system:
+        example: false
+        type: boolean
+      name:
+        example: Mi Aplicación
+        type: string
+      slug:
+        example: mi-aplicacion
+        type: string
+      updated_at:
+        example: "2025-01-15T10:30:00Z"
+        type: string
+    type: object
+  internal_handler.SwaggerAssignCostCentersRequest:
+    properties:
+      cost_center_ids:
+        example:
+        - 550e8400-e29b-41d4-a716-446655440000
+        items:
+          type: string
+        type: array
+      valid_from:
+        example: "2025-01-01T00:00:00Z"
+        type: string
+      valid_until:
+        example: "2025-12-31T23:59:59Z"
+        type: string
+    type: object
+  internal_handler.SwaggerAssignPermissionRequest:
+    properties:
+      permission_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      valid_from:
+        example: "2025-01-01T00:00:00Z"
+        type: string
+      valid_until:
+        example: "2025-12-31T23:59:59Z"
+        type: string
+    type: object
+  internal_handler.SwaggerAssignRoleRequest:
+    properties:
+      role_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      valid_from:
+        example: "2025-01-01T00:00:00Z"
+        type: string
+      valid_until:
+        example: "2025-12-31T23:59:59Z"
+        type: string
+    type: object
+  internal_handler.SwaggerAssignedCountResponse:
+    properties:
+      assigned:
+        example: 3
+        type: integer
+    type: object
+  internal_handler.SwaggerAuditLogItem:
+    properties:
+      actor_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      application_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      created_at:
+        example: "2025-01-15T10:30:00Z"
+        type: string
+      event_type:
+        example: LOGIN_SUCCESS
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      ip_address:
+        example: 192.168.1.100
+        type: string
+      success:
+        example: true
+        type: boolean
+      user_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  internal_handler.SwaggerChangePasswordRequest:
+    properties:
+      current_password:
+        example: Admin@Local1!
+        type: string
+      new_password:
+        example: NuevaClave@2025!
+        type: string
+    type: object
+  internal_handler.SwaggerCostCenterItem:
+    properties:
+      code:
+        example: CC-001
+        type: string
+      created_at:
+        example: "2025-01-01T00:00:00Z"
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      name:
+        example: Centro de Costo Operaciones
+        type: string
+    type: object
+  internal_handler.SwaggerCreateApplicationRequest:
+    properties:
+      name:
+        example: Mi Aplicación
+        type: string
+      slug:
+        example: mi-aplicacion
+        type: string
+    type: object
+  internal_handler.SwaggerCreateCostCenterRequest:
+    properties:
+      code:
+        example: CC-001
+        type: string
+      name:
+        example: Centro de Costo Operaciones
+        type: string
+    type: object
+  internal_handler.SwaggerCreatePermissionRequest:
+    properties:
+      code:
+        example: admin.reportes.read
+        type: string
+      description:
+        example: Lectura de reportes administrativos
+        type: string
+      scope_type:
+        enum:
+        - global
+        - module
+        - resource
+        - action
+        example: module
+        type: string
+    type: object
+  internal_handler.SwaggerCreateRoleRequest:
+    properties:
+      description:
+        example: Rol de supervisor de operaciones
+        type: string
+      name:
+        example: Supervisor
+        type: string
+    type: object
+  internal_handler.SwaggerCreateUserRequest:
+    properties:
+      email:
+        example: jdoe@empresa.com
+        type: string
+      password:
+        example: Clave@Segura1!
+        type: string
+      username:
+        example: jdoe
+        type: string
+    type: object
+  internal_handler.SwaggerErrorDetail:
+    properties:
+      code:
+        example: VALIDATION_ERROR
+        type: string
+      details: {}
+      message:
+        example: campo requerido
+        type: string
+    type: object
+  internal_handler.SwaggerErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/internal_handler.SwaggerErrorDetail'
+    type: object
+  internal_handler.SwaggerLoginRequest:
+    properties:
+      client_type:
+        enum:
+        - web
+        - mobile
+        - desktop
+        example: web
+        type: string
+      password:
+        example: Admin@Local1!
+        type: string
+      username:
+        example: admin
+        type: string
+    type: object
+  internal_handler.SwaggerLoginResponse:
+    properties:
+      access_token:
+        example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+      expires_in:
+        example: 3600
+        type: integer
+      refresh_token:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      token_type:
+        example: Bearer
+        type: string
+      user:
+        $ref: '#/definitions/internal_handler.SwaggerLoginUser'
+    type: object
+  internal_handler.SwaggerLoginUser:
+    properties:
+      email:
+        example: admin@empresa.com
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      must_change_password:
+        example: false
+        type: boolean
+      username:
+        example: admin
+        type: string
+    type: object
+  internal_handler.SwaggerMePermissionsResponse:
+    properties:
+      application:
+        example: sentinel
+        type: string
+      cost_centers:
+        items:
+          type: string
+        type: array
+      permissions:
+        items:
+          type: string
+        type: array
+      roles:
+        items:
+          type: string
+        type: array
+      temporary_roles:
+        items:
+          type: string
+        type: array
+      user_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  internal_handler.SwaggerPaginatedApplications:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.SwaggerApplicationItem'
+        type: array
+      page:
+        example: 1
+        type: integer
+      page_size:
+        example: 20
+        type: integer
+      total:
+        example: 3
+        type: integer
+      total_pages:
+        example: 1
+        type: integer
+    type: object
+  internal_handler.SwaggerPaginatedAuditLogs:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.SwaggerAuditLogItem'
+        type: array
+      page:
+        example: 1
+        type: integer
+      page_size:
+        example: 20
+        type: integer
+      total:
+        example: 100
+        type: integer
+      total_pages:
+        example: 5
+        type: integer
+    type: object
+  internal_handler.SwaggerPaginatedCostCenters:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.SwaggerCostCenterItem'
+        type: array
+      page:
+        example: 1
+        type: integer
+      page_size:
+        example: 20
+        type: integer
+      total:
+        example: 8
+        type: integer
+      total_pages:
+        example: 1
+        type: integer
+    type: object
+  internal_handler.SwaggerPaginatedPermissions:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.SwaggerPermissionItem'
+        type: array
+      page:
+        example: 1
+        type: integer
+      page_size:
+        example: 20
+        type: integer
+      total:
+        example: 15
+        type: integer
+      total_pages:
+        example: 1
+        type: integer
+    type: object
+  internal_handler.SwaggerPaginatedRoles:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.SwaggerRoleItem'
+        type: array
+      page:
+        example: 1
+        type: integer
+      page_size:
+        example: 20
+        type: integer
+      total:
+        example: 5
+        type: integer
+      total_pages:
+        example: 1
+        type: integer
+    type: object
+  internal_handler.SwaggerPaginatedUsers:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.SwaggerUserItem'
+        type: array
+      page:
+        example: 1
+        type: integer
+      page_size:
+        example: 20
+        type: integer
+      total:
+        example: 42
+        type: integer
+      total_pages:
+        example: 3
+        type: integer
+    type: object
+  internal_handler.SwaggerPermissionItem:
+    properties:
+      code:
+        example: admin.users.read
+        type: string
+      created_at:
+        example: "2025-01-01T00:00:00Z"
+        type: string
+      description:
+        example: Lectura de usuarios
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      scope_type:
+        example: module
+        type: string
+    type: object
+  internal_handler.SwaggerPermissionsMapVersionResponse:
+    properties:
+      application:
+        example: sentinel
+        type: string
+      generated_at:
+        example: "2025-01-15T10:30:00Z"
+        type: string
+      version:
+        example: abc123def456
+        type: string
+    type: object
+  internal_handler.SwaggerRefreshRequest:
+    properties:
+      refresh_token:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  internal_handler.SwaggerResetPasswordResponse:
+    properties:
+      temporary_password:
+        example: TempPass@2025!
+        type: string
+    type: object
+  internal_handler.SwaggerRoleItem:
+    properties:
+      created_at:
+        example: "2025-01-01T00:00:00Z"
+        type: string
+      description:
+        example: Rol de administrador del sistema
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      is_system:
+        example: true
+        type: boolean
+      name:
+        example: Administrador
+        type: string
+    type: object
+  internal_handler.SwaggerRotateKeyResponse:
+    properties:
+      secret_key:
+        example: abc123def456ghi789jkl012mno345pqr678stu901vwx234yz
+        type: string
+    type: object
+  internal_handler.SwaggerTokenResponse:
+    properties:
+      access_token:
+        example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+      expires_in:
+        example: 3600
+        type: integer
+      refresh_token:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      token_type:
+        example: Bearer
+        type: string
+    type: object
+  internal_handler.SwaggerUpdateApplicationRequest:
+    properties:
+      is_active:
+        example: true
+        type: boolean
+      name:
+        example: Mi Aplicación Actualizada
+        type: string
+    type: object
+  internal_handler.SwaggerUpdateCostCenterRequest:
+    properties:
+      is_active:
+        example: true
+        type: boolean
+      name:
+        example: Operaciones Actualizado
+        type: string
+    type: object
+  internal_handler.SwaggerUpdateRoleRequest:
+    properties:
+      description:
+        example: Descripción actualizada
+        type: string
+      name:
+        example: Supervisor Senior
+        type: string
+    type: object
+  internal_handler.SwaggerUpdateUserRequest:
+    properties:
+      email:
+        example: nuevo@empresa.com
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      username:
+        example: jdoe_nuevo
+        type: string
+    type: object
+  internal_handler.SwaggerUserItem:
+    properties:
+      created_at:
+        example: "2025-01-01T00:00:00Z"
+        type: string
+      email:
+        example: jdoe@empresa.com
+        type: string
+      failed_attempts:
+        example: 0
+        type: integer
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      is_active:
+        example: true
+        type: boolean
+      last_login_at:
+        example: "2025-01-15T10:30:00Z"
+        type: string
+      locked_until:
+        type: string
+      must_change_pwd:
+        example: false
+        type: boolean
+      username:
+        example: jdoe
+        type: string
+    type: object
+  internal_handler.SwaggerVerifyPermissionRequest:
+    properties:
+      cost_center_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      permission:
+        example: admin.users.read
+        type: string
+    type: object
+  internal_handler.SwaggerVerifyResponse:
+    properties:
+      allowed:
+        example: true
+        type: boolean
+      evaluated_at:
+        example: "2025-01-15T10:30:00Z"
+        type: string
+      permission:
+        example: admin.users.read
+        type: string
+      user_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      username:
+        example: admin
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Servicio centralizado de autenticación y autorización con JWT RS256,
+    RBAC y auditoría.
+  title: Sentinel API
+  version: "1.0"
+paths:
+  /.well-known/jwks.json:
+    get:
+      description: Retorna las claves públicas RSA en formato JWKS para verificación
+        de tokens JWT.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Conjunto de claves JWKS
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Claves públicas JWKS
+      tags:
+      - Sistema
+  /admin/applications:
+    get:
+      description: Retorna la lista paginada de aplicaciones cliente registradas en
+        el sistema.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 'Número de página (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Elementos por página (default: 20, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      - description: Búsqueda por nombre o slug
+        in: query
+        name: search
+        type: string
+      - description: Filtrar por estado activo
+        in: query
+        name: is_active
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista paginada de aplicaciones
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerPaginatedApplications'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Listar aplicaciones
+      tags:
+      - Aplicaciones
+    post:
+      consumes:
+      - application/json
+      description: Registra una nueva aplicación cliente en el sistema y genera su
+        clave secreta.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Datos de la nueva aplicación
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerCreateApplicationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Aplicación creada exitosamente
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerApplicationItem'
+        "400":
+          description: Datos inválidos o slug con formato incorrecto
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "409":
+          description: Ya existe una aplicación con este slug
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Crear aplicación
+      tags:
+      - Aplicaciones
+  /admin/applications/{id}:
+    get:
+      description: Retorna los detalles de una aplicación, incluyendo su clave secreta.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID de la aplicación (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Detalles de la aplicación
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerApplicationItem'
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "404":
+          description: Aplicación no encontrada
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Obtener aplicación
+      tags:
+      - Aplicaciones
+    put:
+      consumes:
+      - application/json
+      description: Actualiza el nombre y/o estado de una aplicación. La aplicación
+        del sistema no puede ser modificada.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID de la aplicación (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Campos a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerUpdateApplicationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Aplicación actualizada
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerApplicationItem'
+        "400":
+          description: Datos inválidos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso o aplicación de sistema
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "404":
+          description: Aplicación no encontrada
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Actualizar aplicación
+      tags:
+      - Aplicaciones
+  /admin/applications/{id}/rotate-key:
+    post:
+      description: Genera una nueva clave secreta para la aplicación, invalidando
+        la anterior. La aplicación del sistema no puede rotar su clave por esta vía.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID de la aplicación (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Nueva clave generada
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerRotateKeyResponse'
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso o aplicación de sistema
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "404":
+          description: Aplicación no encontrada
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Rotar clave de aplicación
+      tags:
+      - Aplicaciones
+  /admin/audit-logs:
+    get:
+      description: Retorna la lista paginada de eventos de auditoría. Permite filtrar
+        por tipo de evento, usuario, actor, aplicación, fechas y resultado.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 'Número de página (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Elementos por página (default: 20, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      - description: 'Filtrar por tipo de evento (ej: LOGIN_SUCCESS)'
+        in: query
+        name: event_type
+        type: string
+      - description: Filtrar por ID de usuario (UUID)
+        in: query
+        name: user_id
+        type: string
+      - description: Filtrar por ID del actor (UUID)
+        in: query
+        name: actor_id
+        type: string
+      - description: Filtrar por ID de aplicación (UUID)
+        in: query
+        name: application_id
+        type: string
+      - description: 'Fecha inicio (RFC3339, ej: 2025-01-01T00:00:00Z)'
+        in: query
+        name: from_date
+        type: string
+      - description: 'Fecha fin (RFC3339, ej: 2025-12-31T23:59:59Z)'
+        in: query
+        name: to_date
+        type: string
+      - description: Filtrar por resultado (true=exitoso, false=fallido)
+        in: query
+        name: success
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista paginada de registros de auditoría
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerPaginatedAuditLogs'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Listar registros de auditoría
+      tags:
+      - Auditoría
+  /admin/cost-centers:
+    get:
+      description: Retorna la lista paginada de centros de costo de la aplicación.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 'Número de página (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Elementos por página (default: 20, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista paginada de centros de costo
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerPaginatedCostCenters'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Listar centros de costo
+      tags:
+      - Centros de Costo
+    post:
+      consumes:
+      - application/json
+      description: Crea un nuevo centro de costo en la aplicación actual.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Datos del nuevo centro de costo
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerCreateCostCenterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Centro de costo creado exitosamente
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerCostCenterItem'
+        "400":
+          description: Datos inválidos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Crear centro de costo
+      tags:
+      - Centros de Costo
+  /admin/cost-centers/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Actualiza el nombre y/o estado de un centro de costo existente.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del centro de costo (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Campos a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerUpdateCostCenterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Centro de costo actualizado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerCostCenterItem'
+        "400":
+          description: Datos inválidos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "404":
+          description: Centro de costo no encontrado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Actualizar centro de costo
+      tags:
+      - Centros de Costo
+  /admin/permissions:
+    get:
+      description: Retorna la lista paginada de permisos de la aplicación.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 'Número de página (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Elementos por página (default: 20, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista paginada de permisos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerPaginatedPermissions'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Listar permisos
+      tags:
+      - Permisos
+    post:
+      consumes:
+      - application/json
+      description: Crea un nuevo permiso en la aplicación actual.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Datos del nuevo permiso
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerCreatePermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Permiso creado exitosamente
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerPermissionItem'
+        "400":
+          description: Datos inválidos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Crear permiso
+      tags:
+      - Permisos
+  /admin/permissions/{id}:
+    delete:
+      description: Elimina un permiso del sistema. Falla si el permiso está asignado
+        a roles o usuarios.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del permiso (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Permiso eliminado exitosamente
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Eliminar permiso
+      tags:
+      - Permisos
+  /admin/roles:
+    get:
+      description: Retorna la lista paginada de roles de la aplicación.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 'Número de página (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Elementos por página (default: 20, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista paginada de roles
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerPaginatedRoles'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Listar roles
+      tags:
+      - Roles
+    post:
+      consumes:
+      - application/json
+      description: Crea un nuevo rol en la aplicación actual.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Datos del nuevo rol
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerCreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Rol creado exitosamente
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerRoleItem'
+        "400":
+          description: Datos inválidos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Crear rol
+      tags:
+      - Roles
+  /admin/roles/{id}:
+    delete:
+      description: Desactiva un rol (no se elimina físicamente). Los usuarios con
+        este rol pierden los permisos asociados.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del rol (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Rol eliminado exitosamente
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Eliminar rol
+      tags:
+      - Roles
+    get:
+      description: Retorna los detalles de un rol, incluyendo sus permisos y la cantidad
+        de usuarios asignados.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del rol (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Detalles del rol
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "404":
+          description: Rol no encontrado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Obtener rol
+      tags:
+      - Roles
+    put:
+      consumes:
+      - application/json
+      description: Actualiza el nombre y/o descripción de un rol existente.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del rol (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Campos a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerUpdateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Rol actualizado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerRoleItem'
+        "400":
+          description: Datos inválidos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "404":
+          description: Rol no encontrado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Actualizar rol
+      tags:
+      - Roles
+  /admin/roles/{id}/permissions:
+    post:
+      consumes:
+      - application/json
+      description: Asigna uno o más permisos a un rol existente.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del rol (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Permisos a asignar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerAddRolePermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Permisos asignados al rol
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerAssignedCountResponse'
+        "400":
+          description: Datos inválidos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Agregar permisos a rol
+      tags:
+      - Roles
+  /admin/roles/{id}/permissions/{pid}:
+    delete:
+      description: Elimina un permiso de un rol existente.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del rol (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID del permiso (UUID)
+        in: path
+        name: pid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Permiso removido del rol exitosamente
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Remover permiso de rol
+      tags:
+      - Roles
+  /admin/users:
+    get:
+      description: Retorna la lista paginada de usuarios. Acepta filtros por búsqueda
+        de texto e estado activo.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: 'Número de página (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Elementos por página (default: 20, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      - description: Búsqueda por username o email
+        in: query
+        name: search
+        type: string
+      - description: Filtrar por estado activo
+        in: query
+        name: is_active
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Lista paginada de usuarios
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerPaginatedUsers'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Listar usuarios
+      tags:
+      - Usuarios
+    post:
+      consumes:
+      - application/json
+      description: Crea un nuevo usuario en el sistema. La contraseña debe cumplir
+        la política de seguridad.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Datos del nuevo usuario
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerCreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Usuario creado exitosamente
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerUserItem'
+        "400":
+          description: Datos inválidos o política de contraseña
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Crear usuario
+      tags:
+      - Usuarios
+  /admin/users/{id}:
+    get:
+      description: Retorna los detalles completos de un usuario por su ID.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del usuario (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Detalles del usuario
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerUserItem'
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "404":
+          description: Usuario no encontrado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Obtener usuario
+      tags:
+      - Usuarios
+    put:
+      consumes:
+      - application/json
+      description: Actualiza los datos de un usuario. Solo se modifican los campos
+        enviados.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del usuario (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Campos a actualizar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerUpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Usuario actualizado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerUserItem'
+        "400":
+          description: Datos inválidos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "404":
+          description: Usuario no encontrado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Actualizar usuario
+      tags:
+      - Usuarios
+  /admin/users/{id}/cost-centers:
+    post:
+      consumes:
+      - application/json
+      description: Asigna uno o más centros de costo a un usuario, reemplazando las
+        asignaciones previas.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del usuario (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Centros de costo a asignar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerAssignCostCentersRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Centros de costo asignados
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerAssignedCountResponse'
+        "400":
+          description: Datos inválidos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Asignar centros de costo a usuario
+      tags:
+      - Usuarios
+  /admin/users/{id}/permissions:
+    post:
+      consumes:
+      - application/json
+      description: Asigna un permiso directo a un usuario, opcionalmente con período
+        de vigencia.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del usuario (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Datos de la asignación
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerAssignPermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Permiso asignado exitosamente
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Datos inválidos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Asignar permiso a usuario
+      tags:
+      - Usuarios
+  /admin/users/{id}/permissions/{pid}:
+    delete:
+      description: Elimina la asignación directa de un permiso a un usuario.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del usuario (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID de la asignación de permiso (UUID)
+        in: path
+        name: pid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Permiso revocado exitosamente
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Revocar permiso de usuario
+      tags:
+      - Usuarios
+  /admin/users/{id}/reset-password:
+    post:
+      description: Genera una contraseña temporal para el usuario y lo obliga a cambiarla
+        en el próximo inicio de sesión.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del usuario (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Contraseña temporal generada
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerResetPasswordResponse'
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Restablecer contraseña
+      tags:
+      - Usuarios
+  /admin/users/{id}/roles:
+    post:
+      consumes:
+      - application/json
+      description: Asigna un rol a un usuario, opcionalmente con período de vigencia.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del usuario (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Datos de la asignación
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerAssignRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Rol asignado exitosamente
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Datos inválidos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Asignar rol a usuario
+      tags:
+      - Usuarios
+  /admin/users/{id}/roles/{rid}:
+    delete:
+      description: Elimina la asignación de un rol a un usuario.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del usuario (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID de la asignación de rol (UUID)
+        in: path
+        name: rid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Rol revocado exitosamente
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Revocar rol de usuario
+      tags:
+      - Usuarios
+  /admin/users/{id}/unlock:
+    post:
+      description: Desbloquea una cuenta de usuario que ha sido bloqueada por intentos
+        fallidos de acceso.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID del usuario (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Usuario desbloqueado exitosamente
+        "400":
+          description: ID inválido
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Sin permiso
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Desbloquear usuario
+      tags:
+      - Usuarios
+  /auth/change-password:
+    post:
+      consumes:
+      - application/json
+      description: Cambia la contraseña del usuario autenticado. Requiere la contraseña
+        actual.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Contraseñas actual y nueva
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Contraseña cambiada exitosamente
+        "400":
+          description: Datos inválidos o política de contraseña
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Cambiar contraseña
+      tags:
+      - Autenticación
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Autentica un usuario con credenciales y retorna tokens JWT de acceso
+        y refresco.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: Credenciales de acceso
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Autenticación exitosa
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerLoginResponse'
+        "400":
+          description: Datos inválidos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: Credenciales incorrectas o aplicación no encontrada
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "403":
+          description: Cuenta inactiva o bloqueada
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - AppKeyAuth: []
+      summary: Iniciar sesión
+      tags:
+      - Autenticación
+  /auth/logout:
+    post:
+      description: Invalida el token de refresco del usuario autenticado.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Sesión cerrada exitosamente
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Cerrar sesión
+      tags:
+      - Autenticación
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Renueva el token de acceso usando un token de refresco válido.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: Token de refresco
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerRefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tokens renovados exitosamente
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerTokenResponse'
+        "400":
+          description: Datos inválidos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: Token inválido, expirado o revocado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - AppKeyAuth: []
+      summary: Renovar tokens
+      tags:
+      - Autenticación
+  /authz/me/permissions:
+    get:
+      description: Retorna todos los roles, permisos y centros de costo del usuario
+        autenticado para la aplicación actual.
+      parameters:
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Permisos del usuario
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerMePermissionsResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Mis permisos
+      tags:
+      - Autorización
+  /authz/permissions-map:
+    get:
+      description: Retorna el mapa completo de permisos de la aplicación, firmado
+        con RSA-SHA256.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Mapa de permisos firmado
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Aplicación no encontrada
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - AppKeyAuth: []
+      summary: Mapa de permisos
+      tags:
+      - Autorización
+  /authz/permissions-map/version:
+    get:
+      description: Retorna la versión actual (hash) del mapa de permisos de la aplicación.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Versión del mapa de permisos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerPermissionsMapVersionResponse'
+        "401":
+          description: Aplicación no encontrada
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - AppKeyAuth: []
+      summary: Versión del mapa de permisos
+      tags:
+      - Autorización
+  /authz/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verifica si el usuario autenticado tiene un permiso específico,
+        opcionalmente en un centro de costo.
+      parameters:
+      - description: Clave secreta de la aplicación
+        in: header
+        name: X-App-Key
+        required: true
+        type: string
+      - description: 'Token JWT. Formato: Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Permiso a verificar
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SwaggerVerifyPermissionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Resultado de la verificación
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerVerifyResponse'
+        "400":
+          description: Datos inválidos
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+        "401":
+          description: No autenticado
+          schema:
+            $ref: '#/definitions/internal_handler.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      - AppKeyAuth: []
+      summary: Verificar permiso
+      tags:
+      - Autorización
+  /health:
+    get:
+      description: Verifica el estado de salud del servicio y sus dependencias (PostgreSQL
+        y Redis).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Servicio operativo
+          schema:
+            $ref: '#/definitions/github_com_enunezf_sentinel_internal_handler.SwaggerHealthResponse'
+        "503":
+          description: Servicio degradado
+          schema:
+            $ref: '#/definitions/github_com_enunezf_sentinel_internal_handler.SwaggerHealthResponse'
+      summary: Estado del servicio
+      tags:
+      - Sistema
+securityDefinitions:
+  AppKeyAuth:
+    description: Clave secreta de la aplicación cliente
+    in: header
+    name: X-App-Key
+    type: apiKey
+  BearerAuth:
+    description: 'Token JWT de acceso. Formato: "Bearer {token}"'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

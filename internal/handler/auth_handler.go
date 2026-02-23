@@ -27,6 +27,20 @@ type loginRequest struct {
 }
 
 // Login handles POST /auth/login.
+//
+// @Summary     Iniciar sesión
+// @Description Autentica un usuario con credenciales y retorna tokens JWT de acceso y refresco.
+// @Tags        Autenticación
+// @Accept      json
+// @Produce     json
+// @Param       X-App-Key  header   string                        true  "Clave secreta de la aplicación"
+// @Param       body       body     SwaggerLoginRequest           true  "Credenciales de acceso"
+// @Success     200        {object} SwaggerLoginResponse          "Autenticación exitosa"
+// @Failure     400        {object} SwaggerErrorResponse          "Datos inválidos"
+// @Failure     401        {object} SwaggerErrorResponse          "Credenciales incorrectas o aplicación no encontrada"
+// @Failure     403        {object} SwaggerErrorResponse          "Cuenta inactiva o bloqueada"
+// @Security    AppKeyAuth
+// @Router      /auth/login [post]
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	var req loginRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -75,6 +89,19 @@ type refreshRequest struct {
 }
 
 // Refresh handles POST /auth/refresh.
+//
+// @Summary     Renovar tokens
+// @Description Renueva el token de acceso usando un token de refresco válido.
+// @Tags        Autenticación
+// @Accept      json
+// @Produce     json
+// @Param       X-App-Key  header   string                  true  "Clave secreta de la aplicación"
+// @Param       body       body     SwaggerRefreshRequest   true  "Token de refresco"
+// @Success     200        {object} SwaggerTokenResponse    "Tokens renovados exitosamente"
+// @Failure     400        {object} SwaggerErrorResponse    "Datos inválidos"
+// @Failure     401        {object} SwaggerErrorResponse    "Token inválido, expirado o revocado"
+// @Security    AppKeyAuth
+// @Router      /auth/refresh [post]
 func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 	var req refreshRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -103,6 +130,18 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 }
 
 // Logout handles POST /auth/logout.
+//
+// @Summary     Cerrar sesión
+// @Description Invalida el token de refresco del usuario autenticado.
+// @Tags        Autenticación
+// @Produce     json
+// @Param       X-App-Key      header   string  true  "Clave secreta de la aplicación"
+// @Param       Authorization  header   string  true  "Token JWT. Formato: Bearer {token}"
+// @Success     204            "Sesión cerrada exitosamente"
+// @Failure     401            {object} SwaggerErrorResponse "No autenticado"
+// @Security    BearerAuth
+// @Security    AppKeyAuth
+// @Router      /auth/logout [post]
 func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 	claims := middleware.GetClaims(c)
 	if claims == nil {
@@ -123,6 +162,21 @@ type changePasswordRequest struct {
 }
 
 // ChangePassword handles POST /auth/change-password.
+//
+// @Summary     Cambiar contraseña
+// @Description Cambia la contraseña del usuario autenticado. Requiere la contraseña actual.
+// @Tags        Autenticación
+// @Accept      json
+// @Produce     json
+// @Param       X-App-Key      header   string                        true  "Clave secreta de la aplicación"
+// @Param       Authorization  header   string                        true  "Token JWT. Formato: Bearer {token}"
+// @Param       body           body     SwaggerChangePasswordRequest  true  "Contraseñas actual y nueva"
+// @Success     204            "Contraseña cambiada exitosamente"
+// @Failure     400            {object} SwaggerErrorResponse          "Datos inválidos o política de contraseña"
+// @Failure     401            {object} SwaggerErrorResponse          "No autenticado"
+// @Security    BearerAuth
+// @Security    AppKeyAuth
+// @Router      /auth/change-password [post]
 func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
 	claims := middleware.GetClaims(c)
 	if claims == nil {
@@ -153,6 +207,13 @@ func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
 }
 
 // JWKS handles GET /.well-known/jwks.json.
+//
+// @Summary     Claves públicas JWKS
+// @Description Retorna las claves públicas RSA en formato JWKS para verificación de tokens JWT.
+// @Tags        Sistema
+// @Produce     json
+// @Success     200 {object} map[string]interface{} "Conjunto de claves JWKS"
+// @Router      /.well-known/jwks.json [get]
 func (h *AuthHandler) JWKS(c *fiber.Ctx) error {
 	jwks := h.tokenMgr.GenerateJWKS()
 	return c.Status(fiber.StatusOK).JSON(jwks)

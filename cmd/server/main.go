@@ -1,3 +1,17 @@
+// @title           Sentinel API
+// @version         1.0
+// @description     Servicio centralizado de autenticación y autorización con JWT RS256, RBAC y auditoría.
+// @host            localhost:8080
+// @BasePath        /
+// @securityDefinitions.apikey BearerAuth
+// @in              header
+// @name            Authorization
+// @description     Token JWT de acceso. Formato: "Bearer {token}"
+// @securityDefinitions.apikey AppKeyAuth
+// @in              header
+// @name            X-App-Key
+// @description     Clave secreta de la aplicación cliente
+
 package main
 
 import (
@@ -12,9 +26,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	swagger "github.com/gofiber/swagger"
 	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
 
+	_ "github.com/enunezf/sentinel/docs/api"
 	"github.com/enunezf/sentinel/internal/bootstrap"
 	"github.com/enunezf/sentinel/internal/config"
 	"github.com/enunezf/sentinel/internal/handler"
@@ -190,6 +206,9 @@ func main() {
 	// Routes
 	// -----------------------------------------------------------------------
 
+	// Swagger UI (sin autenticación).
+	app.Get("/swagger/*", swagger.HandlerDefault)
+
 	// Public endpoints (no auth).
 	app.Get("/health", healthHandler(pool, rdb))
 	app.Get("/.well-known/jwks.json", authHandler.JWKS)
@@ -295,6 +314,14 @@ func main() {
 }
 
 // healthHandler returns a Fiber handler that checks PostgreSQL and Redis liveness.
+//
+// @Summary     Estado del servicio
+// @Description Verifica el estado de salud del servicio y sus dependencias (PostgreSQL y Redis).
+// @Tags        Sistema
+// @Produce     json
+// @Success     200 {object} handler.SwaggerHealthResponse "Servicio operativo"
+// @Failure     503 {object} handler.SwaggerHealthResponse "Servicio degradado"
+// @Router      /health [get]
 func healthHandler(pool *pgxpool.Pool, rdb *goredis.Client) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx, cancel := context.WithTimeout(c.Context(), 3*time.Second)
