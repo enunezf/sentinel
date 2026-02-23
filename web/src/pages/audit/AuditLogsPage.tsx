@@ -354,7 +354,7 @@ export function AuditLogsPage() {
       if (filters.success === 'false') params.success = false
 
       const res = await auditApi.list(params)
-      setData({ items: res.data, total: res.total, totalPages: res.total_pages })
+      setData({ items: res.data ?? [], total: res.total, totalPages: res.total_pages })
     } catch {
       toast({ title: 'Error al cargar logs de auditoría', variant: 'destructive' })
     } finally {

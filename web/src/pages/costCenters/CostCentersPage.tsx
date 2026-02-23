@@ -90,7 +90,7 @@ export function CostCentersPage() {
       if (appFilter !== 'all') params.application_id = appFilter
 
       const res = await costCentersApi.list(params)
-      setData({ items: res.data, total: res.total, totalPages: res.total_pages })
+      setData({ items: res.data ?? [], total: res.total, totalPages: res.total_pages })
     } catch {
       toast({ title: 'Error al cargar centros de costo', variant: 'destructive' })
     } finally {

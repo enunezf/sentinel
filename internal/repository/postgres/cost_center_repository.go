@@ -97,7 +97,7 @@ func (r *CostCenterRepository) List(ctx context.Context, filter CCFilter) ([]*do
 	}
 	defer rows.Close()
 
-	var ccs []*domain.CostCenter
+	ccs := make([]*domain.CostCenter, 0)
 	for rows.Next() {
 		cc, err := scanCostCenter(rows)
 		if err != nil {

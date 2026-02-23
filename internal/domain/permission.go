@@ -27,12 +27,12 @@ func IsValidScopeType(st string) bool {
 
 // Permission represents an authorization permission code for an application.
 type Permission struct {
-	ID            uuid.UUID
-	ApplicationID uuid.UUID
-	Code          string
-	Description   string
-	ScopeType     ScopeType
-	CreatedAt     time.Time
+	ID            uuid.UUID `json:"id"`
+	ApplicationID uuid.UUID `json:"application_id"`
+	Code          string    `json:"code"`
+	Description   string    `json:"description"`
+	ScopeType     ScopeType `json:"scope_type"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // UserPermission represents a direct permission assignment to a user.

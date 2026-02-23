@@ -110,7 +110,7 @@ func (r *PermissionRepository) List(ctx context.Context, filter PermissionFilter
 	}
 	defer rows.Close()
 
-	var perms []*domain.Permission
+	perms := make([]*domain.Permission, 0)
 	for rows.Next() {
 		p, err := scanPermission(rows)
 		if err != nil {

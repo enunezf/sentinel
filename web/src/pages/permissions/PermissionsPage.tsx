@@ -346,7 +346,7 @@ export function PermissionsPage() {
     try {
       // Fetch up to 200 permissions for grouped view
       const res = await permissionsApi.list({ page: 1, page_size: 200 })
-      setAllPermissions(res.data)
+      setAllPermissions(res.data ?? [])
     } catch {
       toast({ title: 'Error al cargar permisos', variant: 'destructive' })
     } finally {

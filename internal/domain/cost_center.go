@@ -8,12 +8,12 @@ import (
 
 // CostCenter represents a cost center (centro de costo) entity.
 type CostCenter struct {
-	ID            uuid.UUID
-	ApplicationID uuid.UUID
-	Code          string
-	Name          string
-	IsActive      bool
-	CreatedAt     time.Time
+	ID            uuid.UUID `json:"id"`
+	ApplicationID uuid.UUID `json:"application_id"`
+	Code          string    `json:"code"`
+	Name          string    `json:"name"`
+	IsActive      bool      `json:"is_active"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // UserCostCenter represents the assignment of a cost center to a user.

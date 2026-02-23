@@ -147,7 +147,7 @@ func (r *AuditRepository) List(ctx context.Context, filter AuditFilter) ([]*doma
 	dataQ := `
 		SELECT id, event_type, application_id, user_id, actor_id,
 		       resource_type, resource_id, old_value, new_value,
-		       ip_address, user_agent, success, error_message, created_at
+		       ip_address::text, user_agent, success, error_message, created_at
 		FROM audit_logs ` + whereClause +
 		fmt.Sprintf(` ORDER BY created_at DESC LIMIT $%d OFFSET $%d`, idx, idx+1)
 	args = append(args, filter.PageSize, offset)
@@ -158,7 +158,7 @@ func (r *AuditRepository) List(ctx context.Context, filter AuditFilter) ([]*doma
 	}
 	defer rows.Close()
 
-	var logs []*domain.AuditLog
+	logs := make([]*domain.AuditLog, 0)
 	for rows.Next() {
 		var l domain.AuditLog
 		var oldValRaw, newValRaw []byte

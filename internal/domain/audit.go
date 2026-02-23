@@ -59,18 +59,18 @@ const (
 
 // AuditLog represents a single immutable audit record.
 type AuditLog struct {
-	ID            uuid.UUID
-	EventType     EventType
-	ApplicationID *uuid.UUID
-	UserID        *uuid.UUID
-	ActorID       *uuid.UUID
-	ResourceType  *string
-	ResourceID    *uuid.UUID
-	OldValue      map[string]interface{}
-	NewValue      map[string]interface{}
-	IPAddress     string
-	UserAgent     string
-	Success       bool
-	ErrorMessage  string
-	CreatedAt     time.Time
+	ID            uuid.UUID              `json:"id"`
+	EventType     EventType              `json:"event_type"`
+	ApplicationID *uuid.UUID             `json:"application_id"`
+	UserID        *uuid.UUID             `json:"user_id"`
+	ActorID       *uuid.UUID             `json:"actor_id"`
+	ResourceType  *string                `json:"resource_type"`
+	ResourceID    *uuid.UUID             `json:"resource_id"`
+	OldValue      map[string]interface{} `json:"old_value"`
+	NewValue      map[string]interface{} `json:"new_value"`
+	IPAddress     string                 `json:"ip_address"`
+	UserAgent     string                 `json:"user_agent"`
+	Success       bool                   `json:"success"`
+	ErrorMessage  string                 `json:"error_message"`
+	CreatedAt     time.Time              `json:"created_at"`
 }
