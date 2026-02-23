@@ -1,44 +1,117 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Shield, Key, Building2, Clock, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Shield, Key, Building2, ClipboardList, Plus, Trash2, Lock } from 'lucide-react'
 import { usersApi } from '@/api/users'
-import { rolesApi } from '@/api/roles'
-import { permissionsApi } from '@/api/permissions'
-import { costCentersApi } from '@/api/costCenters'
-import type { User, Role, Permission, CostCenter } from '@/types'
+import { auditApi } from '@/api/audit'
+import type { User, AuditLog } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { AsignarRolModal } from '@/components/users/AsignarRolModal'
+import { AsignarPermisoModal } from '@/components/users/AsignarPermisoModal'
+import { AsignarCeCosModal } from '@/components/users/AsignarCeCosModal'
 import { toast } from '@/hooks/useToast'
-import { formatDate } from '@/lib/utils'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
+import { formatDate, formatDateRelative } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 
-type TabType = 'roles' | 'permissions' | 'cost_centers' | 'activity'
+// ─── Tab types ──────────────────────────────────────────────────────────────
+
+type TabId = 'roles' | 'permissions' | 'cost_centers' | 'audit'
+
+const tabs: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'roles', label: 'Roles', icon: Shield },
+  { id: 'permissions', label: 'Permisos especiales', icon: Key },
+  { id: 'cost_centers', label: 'Centros de costo', icon: Building2 },
+  { id: 'audit', label: 'Auditoría', icon: ClipboardList },
+]
+
+// ─── Audit tab ──────────────────────────────────────────────────────────────
+
+const auditVariants: Record<string, 'success' | 'warning' | 'secondary' | 'destructive'> = {
+  AUTH_LOGIN_SUCCESS: 'success',
+  AUTH_LOGIN_FAILED: 'warning',
+  AUTH_ACCOUNT_LOCKED: 'destructive',
+  AUTH_LOGOUT: 'secondary',
+  AUTH_PASSWORD_CHANGED: 'success',
+  USER_ROLE_ASSIGNED: 'success',
+  USER_ROLE_REVOKED: 'warning',
+  USER_PERMISSION_ASSIGNED: 'success',
+  USER_PERMISSION_REVOKED: 'warning',
+}
+
+function AuditTab({ userId }: { userId: string }) {
+  const [logs, setLogs] = useState<AuditLog[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    setIsLoading(true)
+    auditApi
+      .list({ user_id: userId, page: 1, page_size: 20 })
+      .then((r) => setLogs(r.data))
+      .catch(() => toast({ title: 'Error al cargar auditoría', variant: 'destructive' }))
+      .finally(() => setIsLoading(false))
+  }, [userId])
+
+  if (isLoading) {
+    return (
+      <div className="p-5 space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-10 animate-pulse rounded-md" style={{ backgroundColor: '#F3F4F6' }} />
+        ))}
+      </div>
+    )
+  }
+
+  if (logs.length === 0) {
+    return (
+      <div className="py-12 text-center text-sm" style={{ color: '#9CA3AF' }}>
+        No hay eventos de auditoría para este usuario.
+      </div>
+    )
+  }
+
+  return (
+    <div className="divide-y" style={{ borderColor: '#F3F4F6' }}>
+      {logs.map((log) => (
+        <div key={log.id} className="px-5 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <Badge
+              variant={auditVariants[log.event_type] ?? 'secondary'}
+              className="text-xs shrink-0"
+            >
+              {log.event_type}
+            </Badge>
+            {log.ip_address && (
+              <span className="text-xs font-mono hidden sm:block" style={{ color: '#9CA3AF' }}>
+                {log.ip_address}
+              </span>
+            )}
+          </div>
+          <span className="text-xs shrink-0" style={{ color: '#9CA3AF' }}>
+            {formatDateRelative(log.created_at)}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Main page ──────────────────────────────────────────────────────────────
 
 export function UserDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<TabType>('roles')
+  const [activeTab, setActiveTab] = useState<TabId>('roles')
 
-  // Available resources for assignment
-  const [availableRoles, setAvailableRoles] = useState<Role[]>([])
-  const [availablePermissions, setAvailablePermissions] = useState<Permission[]>([])
-  const [availableCostCenters, setAvailableCostCenters] = useState<CostCenter[]>([])
+  // Assignment modals
+  const [showRolModal, setShowRolModal] = useState(false)
+  const [showPermisoModal, setShowPermisoModal] = useState(false)
+  const [showCeCosModal, setShowCeCosModal] = useState(false)
 
-  // Assignment form state
-  const [selectedRoleId, setSelectedRoleId] = useState('')
-  const [selectedPermissionId, setSelectedPermissionId] = useState('')
-  const [selectedCostCenterIds, setSelectedCostCenterIds] = useState<string[]>([])
-  const [validFrom, setValidFrom] = useState('')
-  const [validUntil, setValidUntil] = useState('')
-  const [isAssigning, setIsAssigning] = useState(false)
-
-  // Confirm revoke
+  // Revoke confirm
   const [confirmRevoke, setConfirmRevoke] = useState<{
     type: 'role' | 'permission'
     id: string
@@ -50,8 +123,7 @@ export function UserDetailPage() {
     if (!id) return
     setIsLoading(true)
     try {
-      const u = await usersApi.get(id)
-      setUser(u)
+      setUser(await usersApi.get(id))
     } catch {
       toast({ title: 'Error al cargar el usuario', variant: 'destructive' })
     } finally {
@@ -59,75 +131,7 @@ export function UserDetailPage() {
     }
   }
 
-  useEffect(() => {
-    void loadUser()
-    void rolesApi.list({ page_size: 100 }).then((r) => setAvailableRoles(r.data))
-    void permissionsApi.list({ page_size: 100 }).then((r) => setAvailablePermissions(r.data))
-    void costCentersApi.list({ page_size: 100 }).then((r) =>
-      setAvailableCostCenters(r.data.filter((cc) => cc.is_active))
-    )
-  }, [id])
-
-  const handleAssignRole = async () => {
-    if (!id || !selectedRoleId) return
-    setIsAssigning(true)
-    try {
-      await usersApi.assignRole(id, {
-        role_id: selectedRoleId,
-        valid_from: validFrom || undefined,
-        valid_until: validUntil || null,
-      })
-      toast({ title: 'Rol asignado exitosamente' })
-      setSelectedRoleId('')
-      setValidFrom('')
-      setValidUntil('')
-      void loadUser()
-    } catch {
-      toast({ title: 'Error al asignar rol', variant: 'destructive' })
-    } finally {
-      setIsAssigning(false)
-    }
-  }
-
-  const handleAssignPermission = async () => {
-    if (!id || !selectedPermissionId) return
-    setIsAssigning(true)
-    try {
-      await usersApi.assignPermission(id, {
-        permission_id: selectedPermissionId,
-        valid_from: validFrom || undefined,
-        valid_until: validUntil || null,
-      })
-      toast({ title: 'Permiso asignado exitosamente' })
-      setSelectedPermissionId('')
-      setValidFrom('')
-      setValidUntil('')
-      void loadUser()
-    } catch {
-      toast({ title: 'Error al asignar permiso', variant: 'destructive' })
-    } finally {
-      setIsAssigning(false)
-    }
-  }
-
-  const handleAssignCostCenters = async () => {
-    if (!id || selectedCostCenterIds.length === 0) return
-    setIsAssigning(true)
-    try {
-      await usersApi.assignCostCenters(id, {
-        cost_center_ids: selectedCostCenterIds,
-        valid_from: validFrom || undefined,
-        valid_until: validUntil || null,
-      })
-      toast({ title: 'Centros de costo asignados' })
-      setSelectedCostCenterIds([])
-      void loadUser()
-    } catch {
-      toast({ title: 'Error al asignar centros de costo', variant: 'destructive' })
-    } finally {
-      setIsAssigning(false)
-    }
-  }
+  useEffect(() => { void loadUser() }, [id])
 
   const handleRevoke = async () => {
     if (!id || !confirmRevoke) return
@@ -151,8 +155,11 @@ export function UserDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-24 text-gray-400">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent mr-3" />
+      <div className="flex items-center justify-center py-24" style={{ color: '#9CA3AF' }}>
+        <div
+          className="h-6 w-6 animate-spin rounded-full border-2 border-t-transparent mr-3"
+          style={{ borderColor: '#004899', borderTopColor: 'transparent' }}
+        />
         Cargando usuario...
       </div>
     )
@@ -160,7 +167,7 @@ export function UserDetailPage() {
 
   if (!user) {
     return (
-      <div className="text-center py-24 text-gray-400">
+      <div className="text-center py-24" style={{ color: '#9CA3AF' }}>
         <p>Usuario no encontrado.</p>
         <Button variant="outline" onClick={() => navigate('/users')} className="mt-4">
           Volver a usuarios
@@ -169,78 +176,84 @@ export function UserDetailPage() {
     )
   }
 
-  const tabs: { key: TabType; label: string; icon: typeof Shield }[] = [
-    { key: 'roles', label: 'Roles', icon: Shield },
-    { key: 'permissions', label: 'Permisos individuales', icon: Key },
-    { key: 'cost_centers', label: 'Centros de costo', icon: Building2 },
-    { key: 'activity', label: 'Actividad', icon: Clock },
-  ]
-
   return (
     <div className="space-y-6">
-      {/* Back + Header */}
-      <div className="flex items-center gap-3">
+      {/* Back */}
+      <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={() => navigate('/users')} aria-label="Volver">
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">@{user.username}</h1>
-          <p className="text-sm text-gray-500">{user.email}</p>
-        </div>
+        <span className="text-sm" style={{ color: '#6B7280' }}>Usuarios</span>
+        <span className="text-sm" style={{ color: '#9CA3AF' }}>/</span>
+        <span className="text-sm font-medium" style={{ color: '#1A1A2E' }}>@{user.username}</span>
       </div>
 
-      {/* Info card */}
-      <div className="bg-white rounded-lg border border-gray-200 p-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Informacion general</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-          <div>
-            <p className="text-xs text-gray-400 mb-1">Estado</p>
-            <StatusBadge active={user.is_active} />
+      {/* Header card */}
+      <div className="bg-white rounded-xl p-5" style={{ border: '1px solid #E0E5EC' }}>
+        <div className="flex items-start gap-4">
+          {/* Avatar */}
+          <div
+            className="h-14 w-14 rounded-full flex items-center justify-center shrink-0 text-white text-xl font-bold"
+            style={{ backgroundColor: '#004899' }}
+          >
+            {user.username.charAt(0).toUpperCase()}
           </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-1">Cambio de contrasena</p>
-            <Badge variant={user.must_change_pwd ? 'warning' : 'secondary'}>
-              {user.must_change_pwd ? 'Requerido' : 'No requerido'}
-            </Badge>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-1">Ultimo login</p>
-            <p className="text-gray-700">{formatDate(user.last_login_at)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-1">Intentos fallidos</p>
-            <p className={user.failed_attempts > 0 ? 'text-orange-600 font-semibold' : 'text-gray-700'}>
-              {user.failed_attempts}
+
+          {/* Main info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl font-bold" style={{ color: '#1A1A2E' }}>@{user.username}</h1>
+              <StatusBadge active={user.is_active} />
               {user.locked_until && (
-                <span className="ml-2 text-xs text-red-600">(bloqueado hasta {formatDate(user.locked_until)})</span>
+                <Badge variant="destructive" className="flex items-center gap-1">
+                  <Lock className="h-3 w-3" aria-hidden="true" />
+                  Bloqueado
+                </Badge>
               )}
-            </p>
+              {user.must_change_pwd && (
+                <Badge variant="warning">Cambio de contraseña requerido</Badge>
+              )}
+            </div>
+            <p className="text-sm mt-0.5" style={{ color: '#6B7280' }}>{user.email}</p>
           </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-1">Creado</p>
-            <p className="text-gray-700">{formatDate(user.created_at)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-1">Actualizado</p>
-            <p className="text-gray-700">{formatDate(user.updated_at)}</p>
-          </div>
+        </div>
+
+        {/* Stats row */}
+        <div
+          className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 pt-5"
+          style={{ borderTop: '1px solid #F3F4F6' }}
+        >
+          <Stat label="Último acceso" value={user.last_login_at ? formatDateRelative(user.last_login_at) : 'Nunca'} />
+          <Stat
+            label="Intentos fallidos"
+            value={String(user.failed_attempts)}
+            valueColor={user.failed_attempts > 0 ? '#D97706' : undefined}
+          />
+          <Stat label="Roles asignados" value={String(user.roles?.length ?? 0)} />
+          <Stat label="Creado" value={formatDate(user.created_at)} />
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="border-b border-gray-100 flex" role="tablist">
-          {tabs.map(({ key, label, icon: Icon }) => (
+      <div className="bg-white rounded-xl overflow-hidden" style={{ border: '1px solid #E0E5EC' }}>
+        {/* Tab bar */}
+        <div
+          className="flex overflow-x-auto"
+          style={{ borderBottom: '1px solid #E0E5EC' }}
+          role="tablist"
+        >
+          {tabs.map(({ id: tabId, label, icon: Icon }) => (
             <button
-              key={key}
+              key={tabId}
               role="tab"
-              aria-selected={activeTab === key}
-              onClick={() => setActiveTab(key)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === key
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
+              aria-selected={activeTab === tabId}
+              onClick={() => setActiveTab(tabId)}
+              className={cn(
+                'flex items-center gap-2 px-4 py-3.5 text-sm font-medium whitespace-nowrap transition-colors border-b-2 -mb-px',
+                activeTab === tabId
+                  ? 'border-sodexo-blue text-sodexo-blue'
+                  : 'border-transparent text-gray-500 hover:text-gray-800'
+              )}
             >
               <Icon className="h-3.5 w-3.5" aria-hidden="true" />
               {label}
@@ -248,85 +261,102 @@ export function UserDetailPage() {
           ))}
         </div>
 
-        <div className="p-5">
-          {/* Roles tab */}
-          {activeTab === 'roles' && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                {user.roles && user.roles.length > 0 ? (
-                  user.roles.map((role) => (
-                    <div key={role.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{role.name}</p>
-                        <p className="text-xs text-gray-500">
+        {/* ── Roles tab ─────────────────────────────────── */}
+        {activeTab === 'roles' && (
+          <div>
+            {/* Header row */}
+            <div
+              className="flex items-center justify-between px-5 py-3"
+              style={{ borderBottom: '1px solid #F3F4F6' }}
+            >
+              <p className="text-sm font-medium" style={{ color: '#6B7280' }}>
+                {user.roles?.length ?? 0} rol(es) asignado(s)
+              </p>
+              <Button size="sm" variant="outline" onClick={() => setShowRolModal(true)} className="gap-1.5 text-xs">
+                <Plus className="h-3.5 w-3.5" />
+                Asignar rol
+              </Button>
+            </div>
+            <div className="divide-y" style={{ borderColor: '#F3F4F6' }}>
+              {user.roles && user.roles.length > 0 ? (
+                user.roles.map((role) => {
+                  const isTemporal = !!role.valid_until
+                  return (
+                    <div key={role.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm" style={{ color: '#1A1A2E' }}>
+                            {role.name}
+                          </span>
+                          {isTemporal && (
+                            <Badge variant="temporal" className="text-xs">Temporal</Badge>
+                          )}
+                          {!role.is_active && (
+                            <Badge variant="secondary" className="text-xs">Inactivo</Badge>
+                          )}
+                        </div>
+                        <p className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>
                           Desde {formatDate(role.valid_from)}
-                          {role.valid_until ? ` hasta ${formatDate(role.valid_until)}` : ' (sin expirar)'}
+                          {role.valid_until ? ` · Expira ${formatDateRelative(role.valid_until)}` : ' · Sin expiración'}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <StatusBadge active={role.is_active} />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setConfirmRevoke({ type: 'role', id: role.id, label: role.name })}
-                          aria-label={`Revocar rol ${role.name}`}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setConfirmRevoke({ type: 'role', id: role.id, label: role.name })}
+                        aria-label={`Revocar rol ${role.name}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-400 text-center py-6">Sin roles asignados.</p>
-                )}
-              </div>
-
-              {/* Assign role form */}
-              <div className="border-t pt-4 space-y-3">
-                <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <Plus className="h-4 w-4" /> Asignar rol
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <Label htmlFor="select-role">Rol</Label>
-                    <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
-                      <SelectTrigger id="select-role">
-                        <SelectValue placeholder="Seleccionar rol" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableRoles.map((r) => (
-                          <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="role-valid-from">Desde (opcional)</Label>
-                    <Input id="role-valid-from" type="datetime-local" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} />
-                  </div>
-                  <div>
-                    <Label htmlFor="role-valid-until">Hasta (opcional)</Label>
-                    <Input id="role-valid-until" type="datetime-local" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
-                  </div>
+                  )
+                })
+              ) : (
+                <div className="py-10 text-center text-sm" style={{ color: '#9CA3AF' }}>
+                  Sin roles asignados.
                 </div>
-                <Button onClick={handleAssignRole} disabled={!selectedRoleId || isAssigning} size="sm">
-                  {isAssigning ? 'Asignando...' : 'Asignar rol'}
-                </Button>
-              </div>
+              )}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Permissions tab */}
-          {activeTab === 'permissions' && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                {user.permissions && user.permissions.length > 0 ? (
-                  user.permissions.map((perm) => (
-                    <div key={perm.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                      <div>
-                        <p className="text-sm font-mono font-medium text-gray-900">{perm.code}</p>
-                        <p className="text-xs text-gray-500">
-                          {perm.valid_until ? `Expira: ${formatDate(perm.valid_until)}` : 'Sin expirar'}
+        {/* ── Permissions tab ───────────────────────────── */}
+        {activeTab === 'permissions' && (
+          <div>
+            <div
+              className="flex items-center justify-between px-5 py-3"
+              style={{ borderBottom: '1px solid #F3F4F6' }}
+            >
+              <div>
+                <p className="text-sm font-medium" style={{ color: '#6B7280' }}>
+                  {user.permissions?.length ?? 0} permiso(s) especial(es)
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>
+                  Los permisos especiales se aplican además de los permisos heredados por roles.
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setShowPermisoModal(true)} className="shrink-0 gap-1.5 text-xs">
+                <Plus className="h-3.5 w-3.5" />
+                Asignar permiso
+              </Button>
+            </div>
+            <div className="divide-y" style={{ borderColor: '#F3F4F6' }}>
+              {user.permissions && user.permissions.length > 0 ? (
+                user.permissions.map((perm) => {
+                  const isTemporal = !!perm.valid_until
+                  return (
+                    <div key={perm.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-medium" style={{ color: '#1A1A2E' }}>
+                            {perm.code}
+                          </span>
+                          {isTemporal && <Badge variant="temporal" className="text-xs">Temporal</Badge>}
+                        </div>
+                        <p className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>
+                          {perm.valid_until
+                            ? `Expira ${formatDateRelative(perm.valid_until)}`
+                            : 'Sin expiración'}
                         </p>
                       </div>
                       <Button
@@ -338,122 +368,105 @@ export function UserDetailPage() {
                         <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-400 text-center py-6">Sin permisos individuales asignados.</p>
-                )}
-              </div>
-
-              {/* Assign permission form */}
-              <div className="border-t pt-4 space-y-3">
-                <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <Plus className="h-4 w-4" /> Asignar permiso
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <Label htmlFor="select-permission">Permiso</Label>
-                    <Select value={selectedPermissionId} onValueChange={setSelectedPermissionId}>
-                      <SelectTrigger id="select-permission">
-                        <SelectValue placeholder="Seleccionar permiso" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availablePermissions.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>{p.code}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="perm-valid-from">Desde (opcional)</Label>
-                    <Input id="perm-valid-from" type="datetime-local" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} />
-                  </div>
-                  <div>
-                    <Label htmlFor="perm-valid-until">Hasta (opcional)</Label>
-                    <Input id="perm-valid-until" type="datetime-local" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
-                  </div>
+                  )
+                })
+              ) : (
+                <div className="py-10 text-center text-sm" style={{ color: '#9CA3AF' }}>
+                  Sin permisos especiales asignados.
                 </div>
-                <Button onClick={handleAssignPermission} disabled={!selectedPermissionId || isAssigning} size="sm">
-                  {isAssigning ? 'Asignando...' : 'Asignar permiso'}
-                </Button>
-              </div>
+              )}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Cost Centers tab */}
-          {activeTab === 'cost_centers' && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                {user.cost_centers && user.cost_centers.length > 0 ? (
-                  user.cost_centers.map((cc) => (
-                    <div key={cc.id} className="p-3 bg-gray-50 rounded-md">
-                      <p className="text-sm font-medium text-gray-900">{cc.code} - {cc.name}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-400 text-center py-6">Sin centros de costo asignados.</p>
-                )}
-              </div>
-
-              {/* Assign cost centers */}
-              <div className="border-t pt-4 space-y-3">
-                <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                  <Plus className="h-4 w-4" /> Asignar centros de costo
-                </p>
-                <div className="space-y-2">
-                  {availableCostCenters.map((cc) => (
-                    <label key={cc.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedCostCenterIds.includes(cc.id)}
-                        onChange={(e) => {
-                          setSelectedCostCenterIds((prev) =>
-                            e.target.checked ? [...prev, cc.id] : prev.filter((id) => id !== cc.id)
-                          )
-                        }}
-                        className="rounded border-gray-300"
-                      />
-                      <span className="font-mono">{cc.code}</span>
-                      <span className="text-gray-600">{cc.name}</span>
-                    </label>
-                  ))}
+        {/* ── Cost Centers tab ──────────────────────────── */}
+        {activeTab === 'cost_centers' && (
+          <div>
+            <div
+              className="flex items-center justify-between px-5 py-3"
+              style={{ borderBottom: '1px solid #F3F4F6' }}
+            >
+              <p className="text-sm font-medium" style={{ color: '#6B7280' }}>
+                {user.cost_centers?.length ?? 0} centro(s) de costo asignado(s)
+              </p>
+              <Button size="sm" variant="outline" onClick={() => setShowCeCosModal(true)} className="gap-1.5 text-xs">
+                <Plus className="h-3.5 w-3.5" />
+                Asignar CeCos
+              </Button>
+            </div>
+            <div className="divide-y" style={{ borderColor: '#F3F4F6' }}>
+              {user.cost_centers && user.cost_centers.length > 0 ? (
+                user.cost_centers.map((cc) => (
+                  <div key={cc.id} className="px-5 py-3 flex items-center gap-4">
+                    <span className="font-mono text-xs font-semibold px-2 py-1 rounded" style={{ backgroundColor: '#F3F4F6', color: '#374151' }}>
+                      {cc.code}
+                    </span>
+                    <span className="text-sm" style={{ color: '#1A1A2E' }}>{cc.name}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="py-10 text-center text-sm" style={{ color: '#9CA3AF' }}>
+                  Sin centros de costo asignados.
                 </div>
-                <Button
-                  onClick={handleAssignCostCenters}
-                  disabled={selectedCostCenterIds.length === 0 || isAssigning}
-                  size="sm"
-                >
-                  {isAssigning ? 'Asignando...' : `Asignar ${selectedCostCenterIds.length} centro(s)`}
-                </Button>
-              </div>
+              )}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Activity tab */}
-          {activeTab === 'activity' && (
-            <div className="text-center py-8 text-gray-400 text-sm">
-              <Clock className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-              Para ver el historial de actividad del usuario, utilice la seccion de{' '}
-              <a href={`/audit?user_id=${user.id}`} className="text-blue-600 hover:underline">
-                Auditoria
-              </a>{' '}
-              filtrando por este usuario.
-            </div>
-          )}
-        </div>
+        {/* ── Audit tab ─────────────────────────────────── */}
+        {activeTab === 'audit' && <AuditTab userId={user.id} />}
       </div>
+
+      {/* Modals */}
+      <AsignarRolModal
+        open={showRolModal}
+        onOpenChange={setShowRolModal}
+        userId={user.id}
+        username={user.username}
+        onSuccess={loadUser}
+      />
+      <AsignarPermisoModal
+        open={showPermisoModal}
+        onOpenChange={setShowPermisoModal}
+        userId={user.id}
+        username={user.username}
+        onSuccess={loadUser}
+      />
+      <AsignarCeCosModal
+        open={showCeCosModal}
+        onOpenChange={setShowCeCosModal}
+        userId={user.id}
+        username={user.username}
+        onSuccess={loadUser}
+      />
 
       {confirmRevoke && (
         <ConfirmDialog
-          open={true}
+          open
           onOpenChange={(open) => { if (!open) setConfirmRevoke(null) }}
           title={`Revocar ${confirmRevoke.type === 'role' ? 'rol' : 'permiso'}`}
-          description={`Revocar "${confirmRevoke.label}" del usuario @${user.username}?`}
+          description={`¿Revocar "${confirmRevoke.label}" del usuario @${user.username}?`}
           confirmLabel="Revocar"
           variant="destructive"
           onConfirm={handleRevoke}
           isLoading={isRevoking}
         />
       )}
+    </div>
+  )
+}
+
+// ─── Stat helper ────────────────────────────────────────────────────────────
+
+function Stat({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+  return (
+    <div>
+      <p className="text-xs font-medium uppercase tracking-wide mb-1" style={{ color: '#9CA3AF' }}>
+        {label}
+      </p>
+      <p className="text-sm font-medium" style={{ color: valueColor ?? '#374151' }}>
+        {value}
+      </p>
     </div>
   )
 }

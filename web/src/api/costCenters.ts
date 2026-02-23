@@ -4,6 +4,8 @@ import type { CostCenter, PaginatedResponse } from '@/types'
 export interface ListCostCentersParams {
   page?: number
   page_size?: number
+  application_id?: string
+  search?: string
 }
 
 export interface CreateCostCenterPayload {

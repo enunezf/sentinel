@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Plus, Search, Eye, Unlock, RotateCcw, UserCheck, UserX } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Eye, Pencil, Unlock, RotateCcw, UserX, UserCheck, Shield, Key, Building2 } from 'lucide-react'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { usersApi } from '@/api/users'
 import type { User } from '@/types'
 import { DataTable } from '@/components/shared/DataTable'
@@ -10,11 +11,18 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import { UserFormDialog } from './UserFormDialog'
+import { AsignarRolModal } from '@/components/users/AsignarRolModal'
+import { AsignarPermisoModal } from '@/components/users/AsignarPermisoModal'
+import { AsignarCeCosModal } from '@/components/users/AsignarCeCosModal'
 import { toast } from '@/hooks/useToast'
 import { usePagination } from '@/hooks/usePagination'
-import { formatDate } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
+import { useDebounce } from '@/hooks/useDebounce'
+import { formatDateRelative } from '@/lib/utils'
+
+type ActionModal = 'role' | 'permission' | 'costcenter'
+type ConfirmType = 'unlock' | 'reset' | 'activate' | 'deactivate'
 
 export function UsersPage() {
   const navigate = useNavigate()
@@ -26,38 +34,37 @@ export function UsersPage() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 300)
   const [filterActive, setFilterActive] = useState<boolean | undefined>(undefined)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
-  const [confirmAction, setConfirmAction] = useState<{
-    type: 'unlock' | 'reset' | 'activate' | 'deactivate'
-    user: User
-  } | null>(null)
+
+  // Confirm action
+  const [confirmAction, setConfirmAction] = useState<{ type: ConfirmType; user: User } | null>(null)
   const [isActionLoading, setIsActionLoading] = useState(false)
+
+  // Assignment modals
+  const [assignTarget, setAssignTarget] = useState<{ user: User; modal: ActionModal } | null>(null)
 
   const load = useCallback(async () => {
     setIsLoading(true)
     try {
-      const params: { page: number; page_size: number; search?: string; is_active?: boolean } = {
+      const res = await usersApi.list({
         page,
         page_size: pageSize,
-      }
-      if (search) params.search = search
-      if (filterActive !== undefined) params.is_active = filterActive
-
-      const res = await usersApi.list(params)
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+        ...(filterActive !== undefined ? { is_active: filterActive } : {}),
+      })
       setData({ items: res.data, total: res.total, totalPages: res.total_pages })
     } catch {
       toast({ title: 'Error al cargar usuarios', variant: 'destructive' })
     } finally {
       setIsLoading(false)
     }
-  }, [page, pageSize, search, filterActive])
+  }, [page, pageSize, debouncedSearch, filterActive])
 
-  useEffect(() => {
-    void load()
-  }, [load])
+  useEffect(() => { void load() }, [load])
 
-  const handleSearch = (value: string) => {
+  const handleSearchChange = (value: string) => {
     setSearch(value)
     reset()
   }
@@ -69,24 +76,24 @@ export function UsersPage() {
     try {
       if (type === 'unlock') {
         await usersApi.unlock(user.id)
-        toast({ title: 'Usuario desbloqueado', description: `@${user.username} ha sido desbloqueado.` })
+        toast({ title: 'Usuario desbloqueado', description: `@${user.username} desbloqueado.` })
       } else if (type === 'reset') {
         const res = await usersApi.resetPassword(user.id)
         toast({
-          title: 'Contrasena reseteada',
-          description: `Contrasena temporal: ${res.temporary_password}`,
+          title: 'Contraseña reseteada',
+          description: `Contraseña temporal: ${res.temporary_password}`,
         })
       } else if (type === 'activate') {
         await usersApi.update(user.id, { is_active: true })
         toast({ title: 'Usuario activado', description: `@${user.username} activado.` })
-      } else if (type === 'deactivate') {
+      } else {
         await usersApi.update(user.id, { is_active: false })
         toast({ title: 'Usuario desactivado', description: `@${user.username} desactivado.` })
       }
       setConfirmAction(null)
       void load()
     } catch {
-      toast({ title: 'Error al ejecutar la accion', variant: 'destructive' })
+      toast({ title: 'Error al ejecutar la acción', variant: 'destructive' })
     } finally {
       setIsActionLoading(false)
     }
@@ -94,16 +101,34 @@ export function UsersPage() {
 
   const columns: ColumnDef<User>[] = [
     {
-      accessorKey: 'username',
+      id: 'user',
       header: 'Usuario',
-      cell: ({ row }) => (
-        <span className="font-medium text-gray-900">@{row.original.username}</span>
-      ),
-    },
-    {
-      accessorKey: 'email',
-      header: 'Email',
-      cell: ({ row }) => <span className="text-gray-600">{row.original.email}</span>,
+      cell: ({ row }) => {
+        const user = row.original
+        return (
+          <div className="flex items-center gap-3">
+            <div
+              className="h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-white text-sm font-semibold"
+              style={{ backgroundColor: '#004899' }}
+            >
+              {user.username.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm" style={{ color: '#1A1A2E' }}>
+                  @{user.username}
+                </span>
+                {user.locked_until && (
+                  <Badge variant="destructive" className="text-xs">Bloqueado</Badge>
+                )}
+              </div>
+              <span className="text-xs truncate" style={{ color: '#6B7280' }}>
+                {user.email}
+              </span>
+            </div>
+          </div>
+        )
+      },
     },
     {
       accessorKey: 'is_active',
@@ -111,105 +136,114 @@ export function UsersPage() {
       cell: ({ row }) => <StatusBadge active={row.original.is_active} />,
     },
     {
-      accessorKey: 'last_login_at',
-      header: 'Ultimo login',
-      cell: ({ row }) => (
-        <span className="text-gray-500 text-xs">{formatDate(row.original.last_login_at)}</span>
-      ),
-    },
-    {
-      accessorKey: 'failed_attempts',
-      header: 'Int. fallidos',
+      id: 'roles',
+      header: 'Roles',
       cell: ({ row }) => {
-        const attempts = row.original.failed_attempts
-        const locked = row.original.locked_until
+        const count = row.original.roles?.length ?? 0
         return (
-          <div className="flex items-center gap-2">
-            <span className={attempts > 0 ? 'text-orange-600 font-semibold' : 'text-gray-400'}>
-              {attempts}
-            </span>
-            {locked && (
-              <Badge variant="destructive" className="text-xs">Bloqueado</Badge>
-            )}
-          </div>
+          <span className="text-sm font-mono" style={{ color: count > 0 ? '#1A1A2E' : '#9CA3AF' }}>
+            {count}
+          </span>
         )
       },
     },
     {
+      accessorKey: 'last_login_at',
+      header: 'Último acceso',
+      cell: ({ row }) => (
+        <span className="text-xs" style={{ color: '#9CA3AF' }}>
+          {row.original.last_login_at
+            ? formatDateRelative(row.original.last_login_at)
+            : 'Nunca'}
+        </span>
+      ),
+    },
+    {
       id: 'actions',
-      header: 'Acciones',
+      header: '',
       cell: ({ row }) => {
         const user = row.original
         return (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Ver detalle"
-              onClick={() => navigate(`/users/${user.id}`)}
-              aria-label={`Ver detalle de ${user.username}`}
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-            {user.locked_until && (
-              <Button
-                variant="ghost"
-                size="icon"
-                title="Desbloquear"
-                onClick={() => setConfirmAction({ type: 'unlock', user })}
-                aria-label={`Desbloquear ${user.username}`}
-              >
-                <Unlock className="h-4 w-4 text-orange-600" />
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <Button variant="ghost" size="icon" aria-label={`Acciones para @${user.username}`}>
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Resetear contrasena"
-              onClick={() => setConfirmAction({ type: 'reset', user })}
-              aria-label={`Resetear contrasena de ${user.username}`}
-            >
-              <RotateCcw className="h-4 w-4 text-blue-600" />
-            </Button>
-            {user.is_active ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                title="Desactivar usuario"
-                onClick={() => setConfirmAction({ type: 'deactivate', user })}
-                aria-label={`Desactivar ${user.username}`}
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                className="z-50 min-w-[180px] rounded-lg shadow-lg py-1 text-sm"
+                style={{ backgroundColor: '#FFFFFF', border: '1px solid #E0E5EC' }}
+                align="end"
+                sideOffset={4}
               >
-                <UserX className="h-4 w-4 text-red-500" />
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="icon"
-                title="Activar usuario"
-                onClick={() => setConfirmAction({ type: 'activate', user })}
-                aria-label={`Activar ${user.username}`}
-              >
-                <UserCheck className="h-4 w-4 text-green-600" />
-              </Button>
-            )}
-          </div>
+                <DropdownItem icon={Eye} label="Ver detalle" onClick={() => navigate(`/users/${user.id}`)} />
+                <DropdownItem icon={Pencil} label="Editar usuario" onClick={() => navigate(`/users/${user.id}`)} />
+                <DropdownMenu.Separator className="my-1" style={{ height: 1, backgroundColor: '#F3F4F6' }} />
+                <DropdownItem icon={Shield} label="Asignar rol" onClick={() => setAssignTarget({ user, modal: 'role' })} />
+                <DropdownItem icon={Key} label="Asignar permiso" onClick={() => setAssignTarget({ user, modal: 'permission' })} />
+                <DropdownItem icon={Building2} label="Asignar CeCos" onClick={() => setAssignTarget({ user, modal: 'costcenter' })} />
+                <DropdownMenu.Separator className="my-1" style={{ height: 1, backgroundColor: '#F3F4F6' }} />
+                <DropdownItem
+                  icon={RotateCcw}
+                  label="Resetear contraseña"
+                  onClick={() => setConfirmAction({ type: 'reset', user })}
+                />
+                {user.locked_until && (
+                  <DropdownItem
+                    icon={Unlock}
+                    label="Desbloquear"
+                    onClick={() => setConfirmAction({ type: 'unlock', user })}
+                    color="#D97706"
+                  />
+                )}
+                {user.is_active ? (
+                  <DropdownItem
+                    icon={UserX}
+                    label="Desactivar"
+                    onClick={() => setConfirmAction({ type: 'deactivate', user })}
+                    color="#DC2626"
+                  />
+                ) : (
+                  <DropdownItem
+                    icon={UserCheck}
+                    label="Activar"
+                    onClick={() => setConfirmAction({ type: 'activate', user })}
+                    color="#16A34A"
+                  />
+                )}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
         )
       },
     },
   ]
 
-  const confirmMessages = {
-    unlock: { title: 'Desbloquear usuario', description: `Desbloquear la cuenta de @${confirmAction?.user.username}?` },
-    reset: { title: 'Resetear contrasena', description: `Se generara una contrasena temporal para @${confirmAction?.user.username}. El usuario debera cambiarla al siguiente login.` },
-    activate: { title: 'Activar usuario', description: `Activar la cuenta de @${confirmAction?.user.username}?` },
-    deactivate: { title: 'Desactivar usuario', description: `Desactivar la cuenta de @${confirmAction?.user.username}? Se revocan todos sus tokens activos.` },
+  const confirmMessages: Record<ConfirmType, { title: string; description: string }> = {
+    unlock: {
+      title: 'Desbloquear usuario',
+      description: `¿Desbloquear la cuenta de @${confirmAction?.user.username}?`,
+    },
+    reset: {
+      title: 'Resetear contraseña',
+      description: `Se generará una contraseña temporal para @${confirmAction?.user.username}. Deberá cambiarla en el próximo login.`,
+    },
+    activate: {
+      title: 'Activar usuario',
+      description: `¿Activar la cuenta de @${confirmAction?.user.username}?`,
+    },
+    deactivate: {
+      title: 'Desactivar usuario',
+      description: `¿Desactivar la cuenta de @${confirmAction?.user.username}? Se revocarán todos sus tokens activos.`,
+    },
   }
 
   return (
     <div>
       <PageHeader
         title="Usuarios"
-        description="Gestion de cuentas de usuario del sistema"
+        description="Gestión de cuentas de usuario del sistema"
         actions={
           <Button onClick={() => setShowCreateDialog(true)}>
             <Plus className="h-4 w-4" />
@@ -221,17 +255,17 @@ export function UsersPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" aria-hidden="true" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" aria-hidden="true" />
           <Input
             placeholder="Buscar por usuario o email..."
             value={search}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9"
             aria-label="Buscar usuarios"
           />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">Estado:</span>
+          <span className="text-sm" style={{ color: '#6B7280' }}>Estado:</span>
           {[
             { label: 'Todos', value: undefined },
             { label: 'Activos', value: true },
@@ -240,11 +274,12 @@ export function UsersPage() {
             <button
               key={label}
               onClick={() => { setFilterActive(value); reset() }}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              className="px-3 py-1 rounded-full text-xs font-medium transition-colors"
+              style={
                 filterActive === value
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+                  ? { backgroundColor: '#004899', color: '#FFFFFF' }
+                  : { backgroundColor: '#F3F4F6', color: '#374151' }
+              }
             >
               {label}
             </button>
@@ -264,15 +299,42 @@ export function UsersPage() {
         emptyMessage="No se encontraron usuarios."
       />
 
-      <UserFormDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
-        onSuccess={load}
-      />
+      {/* Dialogs */}
+      <UserFormDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} onSuccess={load} />
+
+      {assignTarget?.modal === 'role' && (
+        <AsignarRolModal
+          open
+          onOpenChange={(o) => { if (!o) setAssignTarget(null) }}
+          userId={assignTarget.user.id}
+          username={assignTarget.user.username}
+          onSuccess={() => { setAssignTarget(null); void load() }}
+        />
+      )}
+
+      {assignTarget?.modal === 'permission' && (
+        <AsignarPermisoModal
+          open
+          onOpenChange={(o) => { if (!o) setAssignTarget(null) }}
+          userId={assignTarget.user.id}
+          username={assignTarget.user.username}
+          onSuccess={() => { setAssignTarget(null); void load() }}
+        />
+      )}
+
+      {assignTarget?.modal === 'costcenter' && (
+        <AsignarCeCosModal
+          open
+          onOpenChange={(o) => { if (!o) setAssignTarget(null) }}
+          userId={assignTarget.user.id}
+          username={assignTarget.user.username}
+          onSuccess={() => { setAssignTarget(null); void load() }}
+        />
+      )}
 
       {confirmAction && (
         <ConfirmDialog
-          open={true}
+          open
           onOpenChange={(open) => { if (!open) setConfirmAction(null) }}
           title={confirmMessages[confirmAction.type].title}
           description={confirmMessages[confirmAction.type].description}
@@ -283,5 +345,29 @@ export function UsersPage() {
         />
       )}
     </div>
+  )
+}
+
+// ─── Dropdown item helper ───────────────────────────────────────────────────
+
+interface DropdownItemProps {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  onClick: () => void
+  color?: string
+}
+
+function DropdownItem({ icon: Icon, label, onClick, color }: DropdownItemProps) {
+  return (
+    <DropdownMenu.Item
+      className="flex items-center gap-2.5 px-3 py-2 cursor-pointer outline-none transition-colors"
+      style={{ color: color ?? '#374151' }}
+      onSelect={onClick}
+      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = '#F9FAFB')}
+      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = '')}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      <span className="text-sm">{label}</span>
+    </DropdownMenu.Item>
   )
 }

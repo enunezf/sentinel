@@ -1,17 +1,23 @@
 package handler
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"math"
+	"regexp"
 	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 
+	"github.com/enunezf/sentinel/internal/domain"
 	"github.com/enunezf/sentinel/internal/middleware"
 	"github.com/enunezf/sentinel/internal/repository/postgres"
 	"github.com/enunezf/sentinel/internal/service"
 )
+
+var slugRegexp = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 // AdminHandler handles all /admin/* endpoints.
 type AdminHandler struct {
@@ -20,6 +26,7 @@ type AdminHandler struct {
 	permSvc   *service.PermissionService
 	ccSvc     *service.CostCenterService
 	auditRepo *postgres.AuditRepository
+	appRepo   *postgres.ApplicationRepository
 }
 
 // NewAdminHandler creates a new AdminHandler.
@@ -29,6 +36,7 @@ func NewAdminHandler(
 	permSvc *service.PermissionService,
 	ccSvc *service.CostCenterService,
 	auditRepo *postgres.AuditRepository,
+	appRepo *postgres.ApplicationRepository,
 ) *AdminHandler {
 	return &AdminHandler{
 		userSvc:   userSvc,
@@ -36,6 +44,7 @@ func NewAdminHandler(
 		permSvc:   permSvc,
 		ccSvc:     ccSvc,
 		auditRepo: auditRepo,
+		appRepo:   appRepo,
 	}
 }
 
@@ -865,6 +874,206 @@ func (h *AdminHandler) ListAuditLogs(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(paginatedResponse(logs, page, pageSize, total))
+}
+
+// ---- APPLICATION ENDPOINTS ----
+
+// ListApplications handles GET /admin/applications.
+func (h *AdminHandler) ListApplications(c *fiber.Ctx) error {
+	page, pageSize := parsePagination(c)
+	search := c.Query("search", "")
+
+	var isActive *bool
+	if v := c.Query("is_active", ""); v != "" {
+		b, err := strconv.ParseBool(v)
+		if err == nil {
+			isActive = &b
+		}
+	}
+
+	apps, total, err := h.appRepo.List(c.Context(), postgres.ApplicationFilter{
+		Search:   search,
+		IsActive: isActive,
+		Page:     page,
+		PageSize: pageSize,
+	})
+	if err != nil {
+		return respondError(c, fiber.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+	}
+
+	data := make([]fiber.Map, 0, len(apps))
+	for _, a := range apps {
+		data = append(data, fiber.Map{
+			"id":         a.ID,
+			"name":       a.Name,
+			"slug":       a.Slug,
+			"is_active":  a.IsActive,
+			"is_system":  a.Slug == "system",
+			"created_at": a.CreatedAt,
+			"updated_at": a.UpdatedAt,
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(paginatedResponse(data, page, pageSize, total))
+}
+
+// GetApplication handles GET /admin/applications/:id.
+func (h *AdminHandler) GetApplication(c *fiber.Ctx) error {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return respondError(c, fiber.StatusBadRequest, "VALIDATION_ERROR", "invalid application id")
+	}
+
+	app, err := h.appRepo.FindByID(c.Context(), id)
+	if err != nil || app == nil {
+		return respondError(c, fiber.StatusNotFound, "NOT_FOUND", "application not found")
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"id":         app.ID,
+		"name":       app.Name,
+		"slug":       app.Slug,
+		"secret_key": app.SecretKey,
+		"is_active":  app.IsActive,
+		"is_system":  app.Slug == "system",
+		"created_at": app.CreatedAt,
+		"updated_at": app.UpdatedAt,
+	})
+}
+
+// CreateApplication handles POST /admin/applications.
+func (h *AdminHandler) CreateApplication(c *fiber.Ctx) error {
+	var body struct {
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+	}
+	if err := c.BodyParser(&body); err != nil {
+		return respondError(c, fiber.StatusBadRequest, "VALIDATION_ERROR", "invalid request body")
+	}
+	if body.Name == "" || body.Slug == "" {
+		return respondError(c, fiber.StatusBadRequest, "VALIDATION_ERROR", "name and slug are required")
+	}
+	if !slugRegexp.MatchString(body.Slug) {
+		return respondError(c, fiber.StatusBadRequest, "VALIDATION_ERROR", "slug must be lowercase alphanumeric with hyphens (e.g. my-app)")
+	}
+
+	existing, err := h.appRepo.FindBySlug(c.Context(), body.Slug)
+	if err != nil {
+		return respondError(c, fiber.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+	}
+	if existing != nil {
+		return respondError(c, fiber.StatusConflict, "CONFLICT", "an application with this slug already exists")
+	}
+
+	secretKey, err := generateAppSecretKey()
+	if err != nil {
+		return respondError(c, fiber.StatusInternalServerError, "INTERNAL_ERROR", "failed to generate secret key")
+	}
+
+	app := &domain.Application{
+		ID:        uuid.New(),
+		Name:      body.Name,
+		Slug:      body.Slug,
+		SecretKey: secretKey,
+		IsActive:  true,
+	}
+	if err := h.appRepo.Create(c.Context(), app); err != nil {
+		return respondError(c, fiber.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"id":         app.ID,
+		"name":       app.Name,
+		"slug":       app.Slug,
+		"secret_key": app.SecretKey,
+		"is_active":  app.IsActive,
+		"is_system":  false,
+		"created_at": app.CreatedAt,
+	})
+}
+
+// UpdateApplication handles PUT /admin/applications/:id.
+func (h *AdminHandler) UpdateApplication(c *fiber.Ctx) error {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return respondError(c, fiber.StatusBadRequest, "VALIDATION_ERROR", "invalid application id")
+	}
+
+	existing, err := h.appRepo.FindByID(c.Context(), id)
+	if err != nil || existing == nil {
+		return respondError(c, fiber.StatusNotFound, "NOT_FOUND", "application not found")
+	}
+	if existing.Slug == "system" {
+		return respondError(c, fiber.StatusForbidden, "FORBIDDEN", "the system application cannot be modified")
+	}
+
+	var body struct {
+		Name     string `json:"name"`
+		IsActive *bool  `json:"is_active"`
+	}
+	body.IsActive = &existing.IsActive
+	if err := c.BodyParser(&body); err != nil {
+		return respondError(c, fiber.StatusBadRequest, "VALIDATION_ERROR", "invalid request body")
+	}
+	if body.Name == "" {
+		body.Name = existing.Name
+	}
+
+	isActive := existing.IsActive
+	if body.IsActive != nil {
+		isActive = *body.IsActive
+	}
+
+	updated, err := h.appRepo.Update(c.Context(), id, body.Name, isActive)
+	if err != nil || updated == nil {
+		return respondError(c, fiber.StatusInternalServerError, "INTERNAL_ERROR", "failed to update application")
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"id":         updated.ID,
+		"name":       updated.Name,
+		"slug":       updated.Slug,
+		"is_active":  updated.IsActive,
+		"is_system":  updated.Slug == "system",
+		"updated_at": updated.UpdatedAt,
+	})
+}
+
+// RotateApplicationKey handles POST /admin/applications/:id/rotate-key.
+func (h *AdminHandler) RotateApplicationKey(c *fiber.Ctx) error {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return respondError(c, fiber.StatusBadRequest, "VALIDATION_ERROR", "invalid application id")
+	}
+
+	existing, err := h.appRepo.FindByID(c.Context(), id)
+	if err != nil || existing == nil {
+		return respondError(c, fiber.StatusNotFound, "NOT_FOUND", "application not found")
+	}
+	if existing.Slug == "system" {
+		return respondError(c, fiber.StatusForbidden, "FORBIDDEN", "the system application key cannot be rotated via API")
+	}
+
+	newKey, err := generateAppSecretKey()
+	if err != nil {
+		return respondError(c, fiber.StatusInternalServerError, "INTERNAL_ERROR", "failed to generate secret key")
+	}
+
+	if err := h.appRepo.RotateSecretKey(c.Context(), id, newKey); err != nil {
+		return respondError(c, fiber.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"secret_key": newKey,
+	})
+}
+
+func generateAppSecretKey() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 // mapServiceError maps service errors to HTTP responses.

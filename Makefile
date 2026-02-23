@@ -1,4 +1,4 @@
-.PHONY: build run test lint migrate docker-up docker-down keys
+.PHONY: build run test lint migrate docker-up docker-down local-up local-down keys
 
 build:
 	go build -o bin/auth-service ./cmd/server/
@@ -20,6 +20,12 @@ docker-up:
 
 docker-down:
 	docker compose down
+
+local-up:
+	docker compose -f deploy/local/docker-compose.yml up --build -d
+
+local-down:
+	docker compose -f deploy/local/docker-compose.yml down -v
 
 keys:
 	mkdir -p keys

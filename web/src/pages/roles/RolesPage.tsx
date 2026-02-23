@@ -15,15 +15,16 @@ import { toast } from '@/hooks/useToast'
 import { usePagination } from '@/hooks/usePagination'
 import { formatDate } from '@/lib/utils'
 
+type StatusFilter = 'all' | 'active' | 'inactive'
+
 export function RolesPage() {
   const navigate = useNavigate()
-  const { page, pageSize, goToPage } = usePagination()
-  const [data, setData] = useState<{ items: Role[]; total: number; totalPages: number }>({
-    items: [],
-    total: 0,
-    totalPages: 0,
-  })
+  const { page, pageSize, goToPage, reset } = usePagination()
+  const [allItems, setAllItems] = useState<Role[]>([])
+  const [total, setTotal] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [editRole, setEditRole] = useState<Role | null>(null)
   const [deleteRole, setDeleteRole] = useState<Role | null>(null)
@@ -33,7 +34,9 @@ export function RolesPage() {
     setIsLoading(true)
     try {
       const res = await rolesApi.list({ page, page_size: pageSize })
-      setData({ items: res.data, total: res.total, totalPages: res.total_pages })
+      setAllItems(res.data)
+      setTotal(res.total)
+      setTotalPages(res.total_pages)
     } catch {
       toast({ title: 'Error al cargar roles', variant: 'destructive' })
     } finally {
@@ -41,9 +44,7 @@ export function RolesPage() {
     }
   }, [page, pageSize])
 
-  useEffect(() => {
-    void load()
-  }, [load])
+  useEffect(() => { void load() }, [load])
 
   const handleDelete = async () => {
     if (!deleteRole) return
@@ -60,30 +61,51 @@ export function RolesPage() {
     }
   }
 
+  // Client-side status filter
+  const filtered = allItems.filter((r) => {
+    if (statusFilter === 'active') return r.is_active
+    if (statusFilter === 'inactive') return !r.is_active
+    return true
+  })
+
+  const statusOptions: { label: string; value: StatusFilter }[] = [
+    { label: 'Todos', value: 'all' },
+    { label: 'Activos', value: 'active' },
+    { label: 'Inactivos', value: 'inactive' },
+  ]
+
   const columns: ColumnDef<Role>[] = [
     {
-      accessorKey: 'name',
-      header: 'Nombre',
-      cell: ({ row }) => (
-        <span className="font-medium text-gray-900">{row.original.name}</span>
-      ),
-    },
-    {
-      accessorKey: 'description',
-      header: 'Descripcion',
-      cell: ({ row }) => (
-        <span className="text-gray-500 text-sm">{row.original.description ?? '-'}</span>
-      ),
-    },
-    {
-      accessorKey: 'is_system',
-      header: 'Sistema',
-      cell: ({ row }) =>
-        row.original.is_system ? (
-          <Badge variant="warning">Sistema</Badge>
-        ) : (
-          <Badge variant="secondary">Normal</Badge>
-        ),
+      id: 'name',
+      header: 'Rol',
+      cell: ({ row }) => {
+        const role = row.original
+        return (
+          <div className="flex items-center gap-3">
+            <div
+              className="h-8 w-8 rounded flex items-center justify-center shrink-0 text-white text-xs font-bold"
+              style={{ backgroundColor: '#7C3AED' }}
+            >
+              {role.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm" style={{ color: '#1A1A2E' }}>
+                  {role.name}
+                </span>
+                {role.is_system && (
+                  <Badge variant="system" className="text-xs">Sistema</Badge>
+                )}
+              </div>
+              {role.description && (
+                <span className="text-xs truncate" style={{ color: '#6B7280' }}>
+                  {role.description}
+                </span>
+              )}
+            </div>
+          </div>
+        )
+      },
     },
     {
       accessorKey: 'is_active',
@@ -94,8 +116,17 @@ export function RolesPage() {
       accessorKey: 'permissions_count',
       header: 'Permisos',
       cell: ({ row }) => (
-        <span className="text-gray-700 font-mono text-sm">
+        <span className="text-sm font-mono" style={{ color: '#374151' }}>
           {row.original.permissions_count ?? 0}
+        </span>
+      ),
+    },
+    {
+      accessorKey: 'users_count',
+      header: 'Usuarios',
+      cell: ({ row }) => (
+        <span className="text-sm font-mono" style={{ color: '#374151' }}>
+          {row.original.users_count ?? 0}
         </span>
       ),
     },
@@ -103,12 +134,14 @@ export function RolesPage() {
       accessorKey: 'created_at',
       header: 'Creado',
       cell: ({ row }) => (
-        <span className="text-gray-400 text-xs">{formatDate(row.original.created_at)}</span>
+        <span className="text-xs" style={{ color: '#9CA3AF' }}>
+          {formatDate(row.original.created_at)}
+        </span>
       ),
     },
     {
       id: 'actions',
-      header: 'Acciones',
+      header: '',
       cell: ({ row }) => {
         const role = row.original
         return (
@@ -129,7 +162,7 @@ export function RolesPage() {
               onClick={() => setEditRole(role)}
               aria-label={`Editar ${role.name}`}
             >
-              <Pencil className="h-4 w-4 text-blue-600" />
+              <Pencil className="h-4 w-4 text-sodexo-blue" />
             </Button>
             <Button
               variant="ghost"
@@ -151,7 +184,7 @@ export function RolesPage() {
     <div>
       <PageHeader
         title="Roles"
-        description="Gestion de roles de acceso del sistema"
+        description="Gestión de roles de acceso del sistema"
         actions={
           <Button onClick={() => setShowCreateDialog(true)}>
             <Plus className="h-4 w-4" />
@@ -160,13 +193,32 @@ export function RolesPage() {
         }
       />
 
+      {/* Status filter */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-sm" style={{ color: '#6B7280' }}>Estado:</span>
+        {statusOptions.map(({ label, value }) => (
+          <button
+            key={value}
+            onClick={() => { setStatusFilter(value); reset() }}
+            className="px-3 py-1 rounded-full text-xs font-medium transition-colors"
+            style={
+              statusFilter === value
+                ? { backgroundColor: '#004899', color: '#FFFFFF' }
+                : { backgroundColor: '#F3F4F6', color: '#374151' }
+            }
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <DataTable
-        data={data.items}
+        data={filtered}
         columns={columns}
         page={page}
         pageSize={pageSize}
-        total={data.total}
-        totalPages={data.totalPages}
+        total={total}
+        totalPages={totalPages}
         onPageChange={goToPage}
         isLoading={isLoading}
         emptyMessage="No se encontraron roles."
@@ -187,10 +239,10 @@ export function RolesPage() {
 
       {deleteRole && (
         <ConfirmDialog
-          open={true}
+          open
           onOpenChange={(open) => { if (!open) setDeleteRole(null) }}
           title="Desactivar rol"
-          description={`Desactivar el rol "${deleteRole.name}"? Los usuarios con este rol perderan los accesos asociados.`}
+          description={`¿Desactivar el rol "${deleteRole.name}"? Los usuarios con este rol perderán los accesos asociados.`}
           confirmLabel="Desactivar"
           variant="destructive"
           onConfirm={handleDelete}

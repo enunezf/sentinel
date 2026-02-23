@@ -144,7 +144,7 @@ func main() {
 	// -----------------------------------------------------------------------
 	authHandler := handler.NewAuthHandler(authSvc, tokenMgr)
 	authzHandler := handler.NewAuthzHandler(authzSvc)
-	adminHandler := handler.NewAdminHandler(userSvc, roleSvc, permSvc, ccSvc, auditRepo)
+	adminHandler := handler.NewAdminHandler(userSvc, roleSvc, permSvc, ccSvc, auditRepo, appRepo)
 
 	// -----------------------------------------------------------------------
 	// Fiber application
@@ -242,6 +242,13 @@ func main() {
 	admin.Get("/cost-centers", requirePerm("admin.cost_centers.read"), adminHandler.ListCostCenters)
 	admin.Post("/cost-centers", requirePerm("admin.cost_centers.write"), adminHandler.CreateCostCenter)
 	admin.Put("/cost-centers/:id", requirePerm("admin.cost_centers.write"), adminHandler.UpdateCostCenter)
+
+	// Applications.
+	admin.Get("/applications", requirePerm("admin.system.manage"), adminHandler.ListApplications)
+	admin.Post("/applications", requirePerm("admin.system.manage"), adminHandler.CreateApplication)
+	admin.Get("/applications/:id", requirePerm("admin.system.manage"), adminHandler.GetApplication)
+	admin.Put("/applications/:id", requirePerm("admin.system.manage"), adminHandler.UpdateApplication)
+	admin.Post("/applications/:id/rotate-key", requirePerm("admin.system.manage"), adminHandler.RotateApplicationKey)
 
 	// Audit logs.
 	admin.Get("/audit-logs", requirePerm("admin.audit.read"), adminHandler.ListAuditLogs)

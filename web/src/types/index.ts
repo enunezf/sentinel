@@ -38,6 +38,17 @@ export interface UserCostCenter {
   application: string
 }
 
+export interface Application {
+  id: string
+  name: string
+  slug: string
+  secret_key?: string
+  is_active: boolean
+  is_system: boolean
+  created_at: string
+  updated_at?: string
+}
+
 export interface Role {
   id: string
   name: string
@@ -64,6 +75,7 @@ export interface CostCenter {
   code: string
   name: string
   is_active: boolean
+  application_id?: string
   created_at: string
 }
 
