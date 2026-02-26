@@ -24,13 +24,14 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	swagger "github.com/gofiber/swagger"
 	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
 
-	_ "github.com/enunezf/sentinel/docs/api"
+	swaggerdocs "github.com/enunezf/sentinel/docs/api"
 	"github.com/enunezf/sentinel/internal/bootstrap"
 	"github.com/enunezf/sentinel/internal/config"
 	"github.com/enunezf/sentinel/internal/handler"
@@ -187,8 +188,16 @@ func main() {
 		},
 	})
 
+	// Swagger: clear hardcoded host so Swagger UI uses the actual request host.
+	swaggerdocs.SwaggerInfo.Host = ""
+
 	// Global middleware.
 	app.Use(recover.New())
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders: "Origin,Content-Type,Accept,Authorization,X-App-Key",
+	}))
 	app.Use(logger.New(logger.Config{
 		Format: `{"time":"${time}","status":${status},"latency":"${latency}","method":"${method}","path":"${path}"}` + "\n",
 	}))
