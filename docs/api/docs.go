@@ -27,10 +27,9 @@ const docTemplate = `{
                 "summary": "Claves públicas JWKS",
                 "responses": {
                     "200": {
-                        "description": "Conjunto de claves JWKS",
+                        "description": "Conjunto de claves públicas RSA",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/internal_handler.SwaggerJWKSResponse"
                         }
                     }
                 }
@@ -1157,8 +1156,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Detalles del rol",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/internal_handler.SwaggerRoleDetailResponse"
                         }
                     },
                     "400": {
@@ -1941,8 +1939,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Permiso asignado exitosamente",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/internal_handler.SwaggerAssignedPermissionResponse"
                         }
                     },
                     "400": {
@@ -2165,8 +2162,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Rol asignado exitosamente",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/internal_handler.SwaggerAssignedRoleResponse"
                         }
                     },
                     "400": {
@@ -2629,10 +2625,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Mapa de permisos firmado",
+                        "description": "Mapa de permisos firmado con RSA-SHA256",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/internal_handler.SwaggerPermissionsMapResponse"
                         }
                     },
                     "401": {
@@ -2921,6 +2916,68 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.SwaggerAssignedPermissionResponse": {
+            "type": "object",
+            "properties": {
+                "granted_by": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "permission_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "valid_from": {
+                    "type": "string",
+                    "example": "2025-01-01T00:00:00Z"
+                },
+                "valid_until": {
+                    "type": "string",
+                    "example": "2025-12-31T23:59:59Z"
+                }
+            }
+        },
+        "internal_handler.SwaggerAssignedRoleResponse": {
+            "type": "object",
+            "properties": {
+                "granted_by": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "role_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "role_name": {
+                    "type": "string",
+                    "example": "Administrador"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "valid_from": {
+                    "type": "string",
+                    "example": "2025-01-01T00:00:00Z"
+                },
+                "valid_until": {
+                    "type": "string",
+                    "example": "2025-12-31T23:59:59Z"
+                }
+            }
+        },
         "internal_handler.SwaggerAuditLogItem": {
             "type": "object",
             "properties": {
@@ -2985,6 +3042,23 @@ const docTemplate = `{
                 "id": {
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Centro de Costo Operaciones"
+                }
+            }
+        },
+        "internal_handler.SwaggerCostCenterMapEntry": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "CC-001"
                 },
                 "is_active": {
                     "type": "boolean",
@@ -3094,6 +3168,46 @@ const docTemplate = `{
             "properties": {
                 "error": {
                     "$ref": "#/definitions/internal_handler.SwaggerErrorDetail"
+                }
+            }
+        },
+        "internal_handler.SwaggerJWKSKey": {
+            "type": "object",
+            "properties": {
+                "alg": {
+                    "type": "string",
+                    "example": "RS256"
+                },
+                "e": {
+                    "type": "string",
+                    "example": "AQAB"
+                },
+                "kid": {
+                    "type": "string",
+                    "example": "2026-02-key-01"
+                },
+                "kty": {
+                    "type": "string",
+                    "example": "RSA"
+                },
+                "n": {
+                    "type": "string",
+                    "example": "sF3eLJzG..."
+                },
+                "use": {
+                    "type": "string",
+                    "example": "sig"
+                }
+            }
+        },
+        "internal_handler.SwaggerJWKSResponse": {
+            "type": "object",
+            "properties": {
+                "keys": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.SwaggerJWKSKey"
+                    }
                 }
             }
         },
@@ -3388,6 +3502,54 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.SwaggerPermissionMapEntry": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Lectura de usuarios"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "internal_handler.SwaggerPermissionsMapResponse": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "string",
+                    "example": "sentinel"
+                },
+                "cost_centers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/internal_handler.SwaggerCostCenterMapEntry"
+                    }
+                },
+                "generated_at": {
+                    "type": "string",
+                    "example": "2025-01-15T10:30:00Z"
+                },
+                "permissions": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/internal_handler.SwaggerPermissionMapEntry"
+                    }
+                },
+                "signature": {
+                    "type": "string",
+                    "example": "base64url-encoded-rsa-sha256-signature"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "a1b2c3d4"
+                }
+            }
+        },
         "internal_handler.SwaggerPermissionsMapVersionResponse": {
             "type": "object",
             "properties": {
@@ -3420,6 +3582,49 @@ const docTemplate = `{
                 "temporary_password": {
                     "type": "string",
                     "example": "TempPass@2025!"
+                }
+            }
+        },
+        "internal_handler.SwaggerRoleDetailResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "example": "2025-01-01T00:00:00Z"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Rol de administrador del sistema"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "is_active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "is_system": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Administrador"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.SwaggerPermissionItem"
+                    }
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2025-01-15T10:30:00Z"
+                },
+                "users_count": {
+                    "type": "integer",
+                    "example": 5
                 }
             }
         },

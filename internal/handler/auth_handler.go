@@ -212,7 +212,7 @@ func (h *AuthHandler) ChangePassword(c *fiber.Ctx) error {
 // @Description Retorna las claves públicas RSA en formato JWKS para verificación de tokens JWT.
 // @Tags        Sistema
 // @Produce     json
-// @Success     200 {object} map[string]interface{} "Conjunto de claves JWKS"
+// @Success     200 {object} SwaggerJWKSResponse "Conjunto de claves públicas RSA"
 // @Router      /.well-known/jwks.json [get]
 func (h *AuthHandler) JWKS(c *fiber.Ctx) error {
 	jwks := h.tokenMgr.GenerateJWKS()

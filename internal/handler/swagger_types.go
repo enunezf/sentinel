@@ -325,3 +325,77 @@ type SwaggerPaginatedAuditLogs struct {
 	Total      int                   `json:"total" example:"100"`
 	TotalPages int                   `json:"total_pages" example:"5"`
 }
+
+// ─── TIPOS ESPECÍFICOS ──────────────────────────────────────────────────────
+
+// SwaggerJWKSKey representa una clave RSA pública en formato JWKS (RFC 7517).
+type SwaggerJWKSKey struct {
+	Kty string `json:"kty" example:"RSA"`
+	Alg string `json:"alg" example:"RS256"`
+	Use string `json:"use" example:"sig"`
+	Kid string `json:"kid" example:"2026-02-key-01"`
+	N   string `json:"n" example:"sF3eLJzG..."`
+	E   string `json:"e" example:"AQAB"`
+}
+
+// SwaggerJWKSResponse es la respuesta de GET /.well-known/jwks.json.
+type SwaggerJWKSResponse struct {
+	Keys []SwaggerJWKSKey `json:"keys"`
+}
+
+// SwaggerRoleDetailResponse es la respuesta de GET /admin/roles/:id.
+type SwaggerRoleDetailResponse struct {
+	ID          string                  `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Name        string                  `json:"name" example:"Administrador"`
+	Description *string                 `json:"description" example:"Rol de administrador del sistema"`
+	IsSystem    bool                    `json:"is_system" example:"true"`
+	IsActive    bool                    `json:"is_active" example:"true"`
+	Permissions []SwaggerPermissionItem `json:"permissions"`
+	UsersCount  int                     `json:"users_count" example:"5"`
+	CreatedAt   string                  `json:"created_at" example:"2025-01-01T00:00:00Z"`
+	UpdatedAt   string                  `json:"updated_at" example:"2025-01-15T10:30:00Z"`
+}
+
+// SwaggerAssignedRoleResponse es la respuesta de POST /admin/users/:id/roles.
+type SwaggerAssignedRoleResponse struct {
+	ID         string  `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	UserID     string  `json:"user_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	RoleID     string  `json:"role_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	RoleName   string  `json:"role_name" example:"Administrador"`
+	ValidFrom  string  `json:"valid_from" example:"2025-01-01T00:00:00Z"`
+	ValidUntil *string `json:"valid_until" example:"2025-12-31T23:59:59Z"`
+	GrantedBy  string  `json:"granted_by" example:"550e8400-e29b-41d4-a716-446655440000"`
+}
+
+// SwaggerAssignedPermissionResponse es la respuesta de POST /admin/users/:id/permissions.
+type SwaggerAssignedPermissionResponse struct {
+	ID           string  `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	UserID       string  `json:"user_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	PermissionID string  `json:"permission_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	ValidFrom    string  `json:"valid_from" example:"2025-01-01T00:00:00Z"`
+	ValidUntil   *string `json:"valid_until" example:"2025-12-31T23:59:59Z"`
+	GrantedBy    string  `json:"granted_by" example:"550e8400-e29b-41d4-a716-446655440000"`
+}
+
+// SwaggerPermissionMapEntry es una entrada en el mapa de permisos de una aplicación.
+type SwaggerPermissionMapEntry struct {
+	Roles       []string `json:"roles"`
+	Description string   `json:"description" example:"Lectura de usuarios"`
+}
+
+// SwaggerCostCenterMapEntry es una entrada de centro de costo en el mapa de permisos.
+type SwaggerCostCenterMapEntry struct {
+	Code     string `json:"code" example:"CC-001"`
+	Name     string `json:"name" example:"Centro de Costo Operaciones"`
+	IsActive bool   `json:"is_active" example:"true"`
+}
+
+// SwaggerPermissionsMapResponse es la respuesta de GET /authz/permissions-map.
+type SwaggerPermissionsMapResponse struct {
+	Application string                               `json:"application" example:"sentinel"`
+	GeneratedAt string                               `json:"generated_at" example:"2025-01-15T10:30:00Z"`
+	Version     string                               `json:"version" example:"a1b2c3d4"`
+	Permissions map[string]SwaggerPermissionMapEntry `json:"permissions"`
+	CostCenters map[string]SwaggerCostCenterMapEntry `json:"cost_centers"`
+	Signature   string                               `json:"signature" example:"base64url-encoded-rsa-sha256-signature"`
+}

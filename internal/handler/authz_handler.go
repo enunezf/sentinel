@@ -96,7 +96,7 @@ func (h *AuthzHandler) MePermissions(c *fiber.Ctx) error {
 // @Tags        Autorización
 // @Produce     json
 // @Param       X-App-Key  header   string                  true  "Clave secreta de la aplicación"
-// @Success     200        {object} map[string]interface{}  "Mapa de permisos firmado"
+// @Success     200        {object} SwaggerPermissionsMapResponse  "Mapa de permisos firmado con RSA-SHA256"
 // @Failure     401        {object} SwaggerErrorResponse    "Aplicación no encontrada"
 // @Security    AppKeyAuth
 // @Router      /authz/permissions-map [get]
