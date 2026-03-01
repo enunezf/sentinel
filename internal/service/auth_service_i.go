@@ -1,8 +1,7 @@
+// AuthServiceI es una variante de AuthService que acepta interfaces en lugar de
+// tipos de repositorio concretos. Es funcionalmente equivalente a AuthService y
+// se usa en pruebas unitarias para permitir la inyección completa de mocks.
 package service
-
-// AuthServiceI is a testable variant of AuthService that accepts interfaces
-// instead of concrete repository types. It is functionally equivalent to
-// AuthService and is used in unit tests to enable full mock injection.
 
 import (
 	"context"
@@ -21,20 +20,25 @@ import (
 	"github.com/enunezf/sentinel/internal/token"
 )
 
-// AuthServiceI wraps the auth business logic using interface-based dependencies.
+// AuthServiceI encapsula la lógica de negocio de autenticación usando dependencias
+// basadas en interfaces. Es el gemelo testeable de AuthService: ambos implementan
+// exactamente la misma lógica; la única diferencia es que AuthServiceI recibe
+// interfaces, lo que permite inyectar mocks en los tests sin necesidad de Docker.
 type AuthServiceI struct {
-	userRepo         UserRepositoryIface
-	appRepo          ApplicationRepositoryIface
-	refreshPGRepo    RefreshTokenPGRepositoryIface
-	refreshRedisRepo RefreshTokenRedisRepositoryIface
-	pwdHistoryRepo   PasswordHistoryRepositoryIface
-	userRoleRepo     UserRoleRepositoryIface
-	tokenMgr         *token.Manager
-	auditSvc         AuditServiceIface
-	cfg              *config.Config
+	userRepo         UserRepositoryIface              // acceso a datos de usuarios
+	appRepo          ApplicationRepositoryIface       // validación de X-App-Key
+	refreshPGRepo    RefreshTokenPGRepositoryIface    // almacenamiento persistente de refresh tokens
+	refreshRedisRepo RefreshTokenRedisRepositoryIface // caché de refresh tokens
+	pwdHistoryRepo   PasswordHistoryRepositoryIface   // historial de contraseñas (últimas N)
+	userRoleRepo     UserRoleRepositoryIface          // roles activos por usuario y aplicación
+	tokenMgr         *token.Manager                  // generación y validación de JWT RS256
+	auditSvc         AuditServiceIface                // registro asíncrono de eventos
+	cfg              *config.Config                   // configuración de seguridad y JWT
 }
 
-// NewAuthServiceI creates an AuthServiceI with interface-based dependencies.
+// NewAuthServiceI crea un AuthServiceI con todas las dependencias basadas en interfaces.
+// Todos los parámetros son obligatorios; un valor nil provocará un panic en tiempo de
+// ejecución al intentar usarlos.
 func NewAuthServiceI(
 	userRepo UserRepositoryIface,
 	appRepo ApplicationRepositoryIface,
@@ -59,7 +63,25 @@ func NewAuthServiceI(
 	}
 }
 
-// Login validates credentials and returns tokens on success.
+// Login autentica al usuario con su nombre de usuario y contraseña.
+// El proceso sigue estos pasos:
+//  1. Valida el X-App-Key (req.AppKey) para identificar la aplicación.
+//  2. Valida que req.ClientType sea "web", "mobile" o "desktop".
+//  3. Busca el usuario por username.
+//  4. Verifica que la cuenta esté activa y no bloqueada.
+//  5. Compara la contraseña (normalizada a NFC) con el hash bcrypt almacenado.
+//  6. Si la contraseña falla, incrementa intentos y aplica lógica de lockout.
+//  7. Genera un access token JWT RS256 y un refresh token UUID v4.
+//  8. Almacena el refresh token (hash bcrypt en PG, metadatos en Redis).
+//  9. Emite evento de auditoría (éxito o fallo).
+//
+// Parámetros:
+//   - ctx: contexto de la solicitud HTTP.
+//   - req: datos de entrada del login.
+//
+// Retorna LoginResponse con los tokens o uno de los errores de dominio:
+// ErrApplicationNotFound, ErrInvalidClientType, ErrInvalidCredentials,
+// ErrAccountInactive, ErrAccountLocked.
 func (s *AuthServiceI) Login(ctx context.Context, req LoginRequest) (*LoginResponse, error) {
 	app, err := s.appRepo.FindBySecretKey(ctx, req.AppKey)
 	if err != nil {
@@ -78,6 +100,8 @@ func (s *AuthServiceI) Login(ctx context.Context, req LoginRequest) (*LoginRespo
 		return nil, fmt.Errorf("auth: find user: %w", err)
 	}
 
+	// Usuario no encontrado: registrar auditoría y devolver error genérico para evitar
+	// enumeración de usuarios.
 	if user == nil {
 		appID := app.ID
 		s.auditSvc.LogEvent(&domain.AuditLog{
@@ -100,6 +124,9 @@ func (s *AuthServiceI) Login(ctx context.Context, req LoginRequest) (*LoginRespo
 		return nil, ErrAccountLocked
 	}
 
+	// Normalizar la contraseña a Unicode NFC antes de comparar con el hash almacenado.
+	// Esto garantiza que contraseñas con caracteres compuestos (tildes, etc.) sean
+	// equivalentes independientemente de cómo las envía el cliente.
 	normalizedPwd := norm.NFC.String(req.Password)
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(normalizedPwd)); err != nil {
 		s.handleIFailedLogin(ctx, user, app.ID, req.IP, req.UserAgent)
@@ -110,6 +137,9 @@ func (s *AuthServiceI) Login(ctx context.Context, req LoginRequest) (*LoginRespo
 		return nil, fmt.Errorf("auth: update last login: %w", err)
 	}
 
+	// El TTL del refresh token depende del tipo de cliente:
+	// - web: 7 días (sesión de navegador, mayor riesgo de robo).
+	// - mobile / desktop: 30 días (dispositivos de confianza).
 	refreshTTL := s.cfg.JWT.RefreshTokenTTLWeb
 	if req.ClientType == string(domain.ClientTypeMobile) || req.ClientType == string(domain.ClientTypeDesktop) {
 		refreshTTL = s.cfg.JWT.RefreshTokenTTLMobile
@@ -125,6 +155,8 @@ func (s *AuthServiceI) Login(ctx context.Context, req LoginRequest) (*LoginRespo
 		return nil, fmt.Errorf("auth: generate access token: %w", err)
 	}
 
+	// Generar un UUID v4 como refresh token raw; el valor raw se usa como clave en Redis
+	// y se hashea con bcrypt para almacenarlo en PostgreSQL.
 	rawRefreshToken := uuid.New().String()
 	if err := s.istoreRefreshToken(ctx, user.ID, app.ID, rawRefreshToken, req.ClientType, req.IP, req.UserAgent, refreshTTL); err != nil {
 		return nil, fmt.Errorf("auth: store refresh token: %w", err)
@@ -154,6 +186,14 @@ func (s *AuthServiceI) Login(ctx context.Context, req LoginRequest) (*LoginRespo
 	}, nil
 }
 
+// handleIFailedLogin gestiona un intento de login fallido (contraseña incorrecta).
+// Incrementa el contador de intentos fallidos y aplica la política de bloqueo:
+//   - Si se alcanza MaxFailedAttempts: se registra un lockout.
+//   - Si es el tercer lockout en el mismo día: bloqueo permanente (locked_until = nil).
+//   - Si es el primero o segundo lockout: bloqueo temporal con duración LockoutDuration.
+//
+// Siempre emite un evento de auditoría EventAuthLoginFailed. Si se produce un lockout,
+// también emite EventAuthAccountLocked.
 func (s *AuthServiceI) handleIFailedLogin(ctx context.Context, user *domain.User, appID uuid.UUID, ip, ua string) {
 	user.FailedAttempts++
 	var lockedUntil *time.Time
@@ -162,14 +202,19 @@ func (s *AuthServiceI) handleIFailedLogin(ctx context.Context, user *domain.User
 	now := time.Now()
 
 	if user.FailedAttempts >= s.cfg.Security.MaxFailedAttempts {
+		// Normalizar la fecha del lockout a medianoche UTC para contar lockouts por día.
 		today := now.UTC().Truncate(24 * time.Hour)
 		if lockoutDate == nil || !lockoutDate.UTC().Truncate(24*time.Hour).Equal(today) {
+			// Primer lockout del día: reiniciar el contador diario.
 			lockoutCount = 0
 			lockoutDate = &today
 		}
 		lockoutCount++
 
 		if lockoutCount >= 3 {
+			// Tercer lockout en el mismo día: bloqueo permanente.
+			// El campo locked_until = NULL con lockout_count >= 3 indica bloqueo permanente;
+			// solo un administrador puede desbloquearlo manualmente.
 			lockedUntil = nil
 		} else {
 			t := now.Add(s.cfg.Security.LockoutDuration)
@@ -208,6 +253,16 @@ func (s *AuthServiceI) handleIFailedLogin(ctx context.Context, user *domain.User
 	})
 }
 
+// istoreRefreshToken hashea y persiste el refresh token en PostgreSQL y Redis.
+// Proceso:
+//  1. Genera el hash bcrypt del rawToken (costo configurado en cfg.Security.BcryptCost).
+//  2. Crea el registro en PostgreSQL con el hash (el raw nunca se almacena en PG).
+//  3. Guarda en Redis la clave "refresh:<rawToken>" con los metadatos y el hash,
+//     para que una búsqueda posterior pueda encontrar el registro PG sin escanear
+//     toda la tabla.
+//
+// Redis es no-fatal: si falla el Set, se ignora el error porque PostgreSQL es la
+// fuente de verdad.
 func (s *AuthServiceI) istoreRefreshToken(ctx context.Context, userID, appID uuid.UUID, rawToken, clientType, ip, ua string, ttl time.Duration) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(rawToken), s.cfg.Security.BcryptCost)
 	if err != nil {
@@ -239,12 +294,18 @@ func (s *AuthServiceI) istoreRefreshToken(ctx context.Context, userID, appID uui
 		ClientType: clientType,
 		UserAgent:  ua,
 		IP:         ip,
-		TokenHash:  hashStr,
+		TokenHash:  hashStr, // almacenado en Redis para evitar el escaneo en PG
 	}
 	_ = s.refreshRedisRepo.Set(ctx, rawToken, redisData, ttl)
 	return nil
 }
 
+// ifindRefreshToken localiza el registro de refresh token a partir del valor raw (UUID v4).
+// Estrategia de búsqueda en dos pasos:
+//  1. Consulta Redis por la clave "refresh:<rawToken>". Si existe y contiene el hash,
+//     busca en PostgreSQL directamente por el hash (camino O(1)).
+//  2. Si Redis falla o no tiene el hash, realiza un escaneo completo en PostgreSQL
+//     comparando bcrypt (camino lento, O(n); aceptable para la escala actual).
 func (s *AuthServiceI) ifindRefreshToken(ctx context.Context, rawToken string) (*domain.RefreshToken, error) {
 	data, err := s.refreshRedisRepo.Get(ctx, rawToken)
 	if err != nil {
@@ -252,6 +313,7 @@ func (s *AuthServiceI) ifindRefreshToken(ctx context.Context, rawToken string) (
 	}
 
 	if data != nil && data.TokenHash != "" {
+		// Camino rápido: Redis tiene el hash; buscar en PG por hash es O(1).
 		rt, err := s.refreshPGRepo.FindByHash(ctx, data.TokenHash)
 		if err != nil {
 			return nil, fmt.Errorf("auth: pg find refresh by hash: %w", err)
@@ -259,10 +321,20 @@ func (s *AuthServiceI) ifindRefreshToken(ctx context.Context, rawToken string) (
 		return rt, nil
 	}
 
+	// Camino lento: Redis miss o hash ausente; PG hace la comparación bcrypt en todos los tokens.
 	return s.refreshPGRepo.FindByRawToken(ctx, rawToken)
 }
 
-// Refresh validates a refresh token and issues new tokens (rotation).
+// Refresh valida un refresh token y emite un nuevo par de tokens (rotación de token).
+// La rotación invalida el token anterior (revocación en PG y eliminación en Redis) y
+// crea uno nuevo, manteniendo el mismo client_type y TTL de la sesión original.
+//
+// Parámetros:
+//   - ctx: contexto de la solicitud.
+//   - req: refresh token raw, app key, IP y User-Agent del cliente.
+//
+// Retorna RefreshResponse o uno de los errores: ErrApplicationNotFound, ErrTokenInvalid,
+// ErrTokenRevoked, ErrTokenExpired, ErrAccountInactive, ErrAccountLocked.
 func (s *AuthServiceI) Refresh(ctx context.Context, req RefreshRequest) (*RefreshResponse, error) {
 	app, err := s.appRepo.FindBySecretKey(ctx, req.AppKey)
 	if err != nil || app == nil || !app.IsActive {
@@ -283,6 +355,7 @@ func (s *AuthServiceI) Refresh(ctx context.Context, req RefreshRequest) (*Refres
 		return nil, ErrTokenExpired
 	}
 
+	// Verificar que el usuario siga activo y desbloqueado en el momento del refresh.
 	user, err := s.userRepo.FindByID(ctx, rtRecord.UserID)
 	if err != nil || user == nil {
 		return nil, ErrInvalidCredentials
@@ -294,6 +367,7 @@ func (s *AuthServiceI) Refresh(ctx context.Context, req RefreshRequest) (*Refres
 		return nil, ErrAccountLocked
 	}
 
+	// Revocar el token actual antes de emitir el nuevo (previene reutilización).
 	if err := s.refreshPGRepo.Revoke(ctx, rtRecord.ID); err != nil {
 		return nil, fmt.Errorf("auth: revoke refresh token: %w", err)
 	}
@@ -310,6 +384,7 @@ func (s *AuthServiceI) Refresh(ctx context.Context, req RefreshRequest) (*Refres
 	}
 
 	rawRefreshToken := uuid.New().String()
+	// Preservar el TTL según el client_type original de la sesión.
 	ttl := s.cfg.JWT.RefreshTokenTTLWeb
 	if rtRecord.DeviceInfo.ClientType == string(domain.ClientTypeMobile) ||
 		rtRecord.DeviceInfo.ClientType == string(domain.ClientTypeDesktop) {
@@ -342,7 +417,14 @@ func (s *AuthServiceI) Refresh(ctx context.Context, req RefreshRequest) (*Refres
 	}, nil
 }
 
-// Logout revokes all active refresh tokens for the user+app.
+// Logout revoca todos los refresh tokens activos del usuario en la aplicación indicada.
+// No invalida el access token (su vida corta es suficiente); el cliente debe descartarlo.
+//
+// Parámetros:
+//   - ctx: contexto de la solicitud.
+//   - claims: claims del access token del usuario autenticado.
+//   - appKey: X-App-Key de la aplicación.
+//   - ip, ua: dirección IP y User-Agent del cliente para la auditoría.
 func (s *AuthServiceI) Logout(ctx context.Context, claims *domain.Claims, appKey, ip, ua string) error {
 	app, err := s.appRepo.FindBySecretKey(ctx, appKey)
 	if err != nil || app == nil || !app.IsActive {
@@ -373,7 +455,22 @@ func (s *AuthServiceI) Logout(ctx context.Context, claims *domain.Claims, appKey
 	return nil
 }
 
-// ChangePassword validates the current password and sets a new one.
+// ChangePassword permite al usuario autenticado cambiar su propia contraseña.
+// Proceso:
+//  1. Verifica la contraseña actual (normalizada a NFC) contra el hash almacenado.
+//  2. Valida la nueva contraseña según la política (mínimo 10 caracteres, 1 mayúscula,
+//     1 dígito, 1 símbolo).
+//  3. Comprueba que la nueva contraseña no coincida con ninguna de las últimas N
+//     contraseñas almacenadas en password_history.
+//  4. Hashea la nueva contraseña con bcrypt (costo configurado).
+//  5. Guarda el hash antiguo en password_history antes de actualizar.
+//
+// Parámetros:
+//   - ctx: contexto de la solicitud.
+//   - claims: claims del access token del usuario autenticado.
+//   - req: contraseña actual, contraseña nueva, IP y User-Agent.
+//
+// Errores posibles: ErrInvalidCredentials, ErrPasswordPolicy, ErrPasswordReused.
 func (s *AuthServiceI) ChangePassword(ctx context.Context, claims *domain.Claims, req ChangePasswordRequest) error {
 	userID, err := uuid.Parse(claims.Sub)
 	if err != nil {
@@ -385,6 +482,7 @@ func (s *AuthServiceI) ChangePassword(ctx context.Context, claims *domain.Claims
 		return ErrInvalidCredentials
 	}
 
+	// Normalizar ambas contraseñas a NFC para consistencia con el hash almacenado.
 	currentNFC := norm.NFC.String(req.CurrentPassword)
 	newNFC := norm.NFC.String(req.NewPassword)
 
@@ -396,6 +494,7 @@ func (s *AuthServiceI) ChangePassword(ctx context.Context, claims *domain.Claims
 		return err
 	}
 
+	// Recuperar los últimos N hashes del historial y comparar con la nueva contraseña.
 	hashes, err := s.pwdHistoryRepo.GetLastN(ctx, userID, s.cfg.Security.PasswordHistory)
 	if err != nil {
 		return fmt.Errorf("auth: get password history: %w", err)
@@ -411,6 +510,7 @@ func (s *AuthServiceI) ChangePassword(ctx context.Context, claims *domain.Claims
 		return fmt.Errorf("auth: hash new password: %w", err)
 	}
 
+	// Guardar el hash actual en el historial antes de reemplazarlo.
 	if err := s.pwdHistoryRepo.Add(ctx, userID, user.PasswordHash); err != nil {
 		return fmt.Errorf("auth: add to password history: %w", err)
 	}
@@ -430,8 +530,10 @@ func (s *AuthServiceI) ChangePassword(ctx context.Context, claims *domain.Claims
 	return nil
 }
 
-// validatePasswordPolicyInternal is a private alias so AuthServiceI can call it
-// without a circular dependency on ValidatePasswordPolicy from auth_service.go.
+// validatePasswordPolicyInternal es un alias privado de ValidatePasswordPolicy
+// para que AuthServiceI pueda usarlo sin crear una dependencia circular en los tests.
+// Aplica exactamente la misma política: mínimo 10 caracteres Unicode, al menos una
+// letra mayúscula, un dígito y un carácter especial.
 func validatePasswordPolicyInternal(password string) error {
 	if utf8.RuneCountInString(password) < 10 {
 		return fmt.Errorf("%w: password must be at least 10 characters", ErrPasswordPolicy)

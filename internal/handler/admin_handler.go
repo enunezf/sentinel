@@ -20,20 +20,29 @@ import (
 	"github.com/enunezf/sentinel/internal/service"
 )
 
+// slugRegexp valida que el slug de una aplicación siga el formato kebab-case:
+// solo letras minúsculas, dígitos y guiones, sin guiones al inicio ni al final
+// (ej. "mi-app", "erp2", "portal-rrhh"). Esto garantiza compatibilidad con
+// URLs y nombres de subdominios.
 var slugRegexp = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
-// AdminHandler handles all /admin/* endpoints.
+// AdminHandler agrupa todos los handlers del área de administración (/admin/*).
+// Cubre la gestión de usuarios, roles, permisos, centros de costo, aplicaciones
+// y la consulta de logs de auditoría.
+// Todos sus endpoints requieren JWT válido y el permiso RBAC correspondiente,
+// verificados por los middlewares JWTAuth y RequirePermission en el router.
 type AdminHandler struct {
-	userSvc   *service.UserService
-	roleSvc   *service.RoleService
-	permSvc   *service.PermissionService
-	ccSvc     *service.CostCenterService
-	auditRepo *postgres.AuditRepository
-	appRepo   *postgres.ApplicationRepository
-	logger    *slog.Logger
+	userSvc   *service.UserService              // lógica de negocio de usuarios (crear, actualizar, asignar roles/permisos)
+	roleSvc   *service.RoleService              // lógica de negocio de roles (CRUD, asignación de permisos)
+	permSvc   *service.PermissionService        // lógica de negocio de permisos (CRUD)
+	ccSvc     *service.CostCenterService        // lógica de negocio de centros de costo
+	auditRepo *postgres.AuditRepository         // acceso directo al repositorio de auditoría para consultas
+	appRepo   *postgres.ApplicationRepository   // acceso directo al repositorio de aplicaciones cliente
+	logger    *slog.Logger                      // logger estructurado con atributo component="admin"
 }
 
-// NewAdminHandler creates a new AdminHandler.
+// NewAdminHandler construye un AdminHandler inyectando sus dependencias.
+// El logger recibido se enriquece con el atributo component="admin".
 func NewAdminHandler(
 	userSvc *service.UserService,
 	roleSvc *service.RoleService,
@@ -54,7 +63,10 @@ func NewAdminHandler(
 	}
 }
 
-// internalError logs a 500 error and returns a standard error response.
+// internalError registra un error inesperado con nivel ERROR y retorna una
+// respuesta 500 al cliente. Se utiliza cuando el error no es atribuible al
+// usuario (ej. fallo de base de datos). El mensaje técnico se loguea pero
+// nunca se expone en la respuesta para no filtrar detalles internos.
 func (h *AdminHandler) internalError(c *fiber.Ctx, err error, msg string) error {
 	requestID, _ := c.Locals(middleware.LocalRequestID).(string)
 	h.logger.Error(msg,
@@ -64,7 +76,10 @@ func (h *AdminHandler) internalError(c *fiber.Ctx, err error, msg string) error 
 	return respondError(c, fiber.StatusInternalServerError, "INTERNAL_ERROR", "internal server error")
 }
 
-// pagination helpers.
+// parsePagination extrae y normaliza los parámetros de paginación de la query string.
+// Valores por defecto: page=1, page_size=20.
+// Restricciones: page mínimo 1, page_size entre 1 y 100 (máximo permitido por la API).
+// Valores inválidos (no numéricos) se reemplazan silenciosamente por los defaults.
 func parsePagination(c *fiber.Ctx) (page, pageSize int) {
 	page, _ = strconv.Atoi(c.Query("page", "1"))
 	pageSize, _ = strconv.Atoi(c.Query("page_size", "20"))
@@ -80,6 +95,9 @@ func parsePagination(c *fiber.Ctx) (page, pageSize int) {
 	return
 }
 
+// totalPages calcula el número total de páginas para una colección paginada.
+// Usa math.Ceil para que un resto de elementos genere una página extra.
+// Retorna 0 si pageSize es 0 para evitar división por cero.
 func totalPages(total, pageSize int) int {
 	if pageSize == 0 {
 		return 0
@@ -87,6 +105,10 @@ func totalPages(total, pageSize int) int {
 	return int(math.Ceil(float64(total) / float64(pageSize)))
 }
 
+// paginatedResponse construye el envelope JSON estándar para respuestas paginadas.
+// El campo "data" contiene los elementos de la página actual.
+// Los campos de paginación (page, page_size, total, total_pages) permiten al
+// frontend renderizar controles de navegación sin cálculos adicionales.
 func paginatedResponse(data interface{}, page, pageSize, total int) fiber.Map {
 	return fiber.Map{
 		"data":        data,
@@ -99,6 +121,18 @@ func paginatedResponse(data interface{}, page, pageSize, total int) fiber.Map {
 
 // ---- USER ENDPOINTS ----
 
+// ListUsers maneja GET /admin/users.
+//
+// Retorna la lista paginada de todos los usuarios del sistema.
+// Soporta filtrado por texto libre (username o email) mediante el parámetro
+// "search" y por estado activo/inactivo mediante "is_active".
+//
+// Códigos HTTP posibles:
+//   - 200: lista paginada de usuarios (puede ser lista vacía)
+//   - 401: JWT ausente o inválido
+//   - 403: usuario autenticado sin permiso admin.users.read
+//   - 500: error de base de datos
+//
 // ListUsers handles GET /admin/users.
 //
 // @Summary     Listar usuarios
@@ -157,6 +191,21 @@ func (h *AdminHandler) ListUsers(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(paginatedResponse(data, page, pageSize, total))
 }
 
+// CreateUser maneja POST /admin/users.
+//
+// Crea un nuevo usuario en el sistema. La contraseña debe cumplir la política
+// de seguridad (longitud mínima, mayúsculas, dígitos, caracteres especiales).
+// El campo actorID se extrae de los claims del JWT para registrar quién creó
+// el usuario en el log de auditoría.
+//
+// Códigos HTTP posibles:
+//   - 201: usuario creado exitosamente
+//   - 400: body inválido, campos faltantes o política de contraseña no cumplida
+//   - 401: JWT ausente o inválido
+//   - 403: sin permiso admin.users.write
+//   - 409: ya existe un usuario con ese username o email
+//   - 500: error interno
+//
 // CreateUser handles POST /admin/users.
 //
 // @Summary     Crear usuario
@@ -215,6 +264,19 @@ func (h *AdminHandler) CreateUser(c *fiber.Ctx) error {
 	})
 }
 
+// GetUser maneja GET /admin/users/:id.
+//
+// Retorna el detalle completo de un usuario por su ID (UUID). Incluye campos
+// sensibles como failed_attempts y locked_until que son útiles para diagnóstico
+// y soporte. Si el ID no es un UUID válido retorna 400 sin consultar la base de datos.
+//
+// Códigos HTTP posibles:
+//   - 200: detalle del usuario
+//   - 400: el parámetro :id no es un UUID válido
+//   - 401: JWT ausente o inválido
+//   - 403: sin permiso admin.users.read
+//   - 404: usuario no encontrado
+//
 // GetUser handles GET /admin/users/:id.
 //
 // @Summary     Obtener usuario
@@ -257,6 +319,21 @@ func (h *AdminHandler) GetUser(c *fiber.Ctx) error {
 	})
 }
 
+// UpdateUser maneja PUT /admin/users/:id.
+//
+// Actualiza los datos de un usuario de forma parcial: solo se modifican los campos
+// que se incluyan en el body (username, email, is_active). Los campos ausentes
+// conservan su valor actual. Esto se implementa con punteros opcionales (*string, *bool).
+//
+// Códigos HTTP posibles:
+//   - 200: usuario actualizado
+//   - 400: UUID inválido o body malformado
+//   - 401: JWT ausente o inválido
+//   - 403: sin permiso admin.users.write
+//   - 404: usuario no encontrado
+//   - 409: conflicto de unicidad (username o email duplicado)
+//   - 500: error interno
+//
 // UpdateUser handles PUT /admin/users/:id.
 //
 // @Summary     Actualizar usuario
@@ -319,6 +396,20 @@ func (h *AdminHandler) UpdateUser(c *fiber.Ctx) error {
 	})
 }
 
+// UnlockUser maneja POST /admin/users/:id/unlock.
+//
+// Desbloquea una cuenta de usuario que fue bloqueada por superar el umbral de
+// intentos fallidos de login. Restablece los contadores lockout_count, lockout_date
+// y locked_until en la base de datos. Solo un administrador con el permiso
+// correspondiente puede ejecutar esta acción.
+//
+// Códigos HTTP posibles:
+//   - 204: usuario desbloqueado, sin cuerpo en la respuesta
+//   - 400: UUID inválido
+//   - 401: JWT ausente o inválido
+//   - 403: sin permiso admin.users.write
+//   - 500: error interno
+//
 // UnlockUser handles POST /admin/users/:id/unlock.
 //
 // @Summary     Desbloquear usuario
@@ -354,6 +445,24 @@ func (h *AdminHandler) UnlockUser(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+// ResetPassword maneja POST /admin/users/:id/reset-password.
+//
+// Genera una contraseña temporal aleatoria, la hashea con bcrypt y la guarda
+// en la cuenta del usuario. Establece must_change_pwd=true para obligar al
+// usuario a cambiarla en el próximo login. La contraseña temporal se devuelve
+// en texto plano en la respuesta para que el administrador la comunique al usuario
+// por un canal seguro (email, ticket, etc.).
+//
+// La contraseña temporal está exenta de la política de contraseñas para facilitar
+// el proceso de restablecimiento.
+//
+// Códigos HTTP posibles:
+//   - 200: contraseña temporal generada con campo "temporary_password"
+//   - 400: UUID inválido
+//   - 401: JWT ausente o inválido
+//   - 403: sin permiso admin.users.write
+//   - 500: error interno o fallo de generación de entropía
+//
 // ResetPassword handles POST /admin/users/:id/reset-password.
 //
 // @Summary     Restablecer contraseña
@@ -392,6 +501,21 @@ func (h *AdminHandler) ResetPassword(c *fiber.Ctx) error {
 	})
 }
 
+// AssignRole maneja POST /admin/users/:id/roles.
+//
+// Asigna un rol a un usuario con vigencia opcional (valid_from, valid_until).
+// Si valid_until se omite, la asignación es permanente. El appID se extrae
+// de los Locals del middleware AppKey para registrar la aplicación en la que
+// se realizó la asignación (importante para la auditoría multi-tenant).
+//
+// Códigos HTTP posibles:
+//   - 201: rol asignado con la información de la asignación
+//   - 400: UUID inválido o body malformado
+//   - 401: JWT ausente o inválido
+//   - 403: sin permiso admin.users.write
+//   - 409: el usuario ya tiene ese rol asignado
+//   - 500: error interno
+//
 // AssignRole handles POST /admin/users/:id/roles.
 //
 // @Summary     Asignar rol a usuario
@@ -464,6 +588,20 @@ func (h *AdminHandler) AssignRole(c *fiber.Ctx) error {
 	})
 }
 
+// RevokeRole maneja DELETE /admin/users/:id/roles/:rid.
+//
+// Elimina una asignación de rol específica de un usuario. El parámetro :rid
+// es el ID del registro en la tabla user_roles (no el ID del rol en sí),
+// lo que permite revocar una asignación temporal sin afectar otras asignaciones
+// del mismo rol al mismo usuario con distintas vigencias.
+//
+// Códigos HTTP posibles:
+//   - 204: asignación revocada, sin cuerpo en la respuesta
+//   - 400: UUID inválido en :id o :rid
+//   - 401: JWT ausente o inválido
+//   - 403: sin permiso admin.users.write
+//   - 500: error interno
+//
 // RevokeRole handles DELETE /admin/users/:id/roles/:rid.
 //
 // @Summary     Revocar rol de usuario
@@ -504,6 +642,20 @@ func (h *AdminHandler) RevokeRole(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+// AssignPermission maneja POST /admin/users/:id/permissions.
+//
+// Asigna un permiso directo a un usuario (sin pasar por un rol). Esto permite
+// excepciones puntuales en la gestión de accesos. Al igual que AssignRole,
+// soporta vigencia opcional y registra el appID para la auditoría.
+//
+// Códigos HTTP posibles:
+//   - 201: permiso asignado con la información de la asignación
+//   - 400: UUID inválido o body malformado
+//   - 401: JWT ausente o inválido
+//   - 403: sin permiso admin.users.write
+//   - 409: el usuario ya tiene ese permiso directo asignado
+//   - 500: error interno
+//
 // AssignPermission handles POST /admin/users/:id/permissions.
 //
 // @Summary     Asignar permiso a usuario
@@ -572,6 +724,18 @@ func (h *AdminHandler) AssignPermission(c *fiber.Ctx) error {
 	})
 }
 
+// RevokePermission maneja DELETE /admin/users/:id/permissions/:pid.
+//
+// Elimina una asignación directa de permiso a un usuario. El parámetro :pid
+// es el ID del registro en user_permissions, no del permiso en sí.
+//
+// Códigos HTTP posibles:
+//   - 204: asignación revocada, sin cuerpo en la respuesta
+//   - 400: UUID inválido en :id o :pid
+//   - 401: JWT ausente o inválido
+//   - 403: sin permiso admin.users.write
+//   - 500: error interno
+//
 // RevokePermission handles DELETE /admin/users/:id/permissions/:pid.
 //
 // @Summary     Revocar permiso de usuario
@@ -612,6 +776,20 @@ func (h *AdminHandler) RevokePermission(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+// AssignCostCenters maneja POST /admin/users/:id/cost-centers.
+//
+// Asigna uno o más centros de costo a un usuario en una sola operación,
+// reemplazando las asignaciones previas (semántica de set completo, no append).
+// Si cost_center_ids está vacío, elimina todas las asignaciones del usuario.
+// Esto simplifica la sincronización desde sistemas externos (ERP, RRHH).
+//
+// Códigos HTTP posibles:
+//   - 201: asignaciones realizadas, responde con el conteo {"assigned": N}
+//   - 400: UUID inválido o body malformado
+//   - 401: JWT ausente o inválido
+//   - 403: sin permiso admin.users.write
+//   - 500: error interno
+//
 // AssignCostCenters handles POST /admin/users/:id/cost-centers.
 //
 // @Summary     Asignar centros de costo a usuario
@@ -674,6 +852,18 @@ func (h *AdminHandler) AssignCostCenters(c *fiber.Ctx) error {
 
 // ---- ROLE ENDPOINTS ----
 
+// ListRoles maneja GET /admin/roles.
+//
+// Retorna la lista paginada de roles. Si el middleware AppKey inyectó una
+// aplicación en Locals, filtra los roles por esa aplicación. Esto permite
+// que cada aplicación cliente vea solo sus propios roles.
+//
+// Códigos HTTP posibles:
+//   - 200: lista paginada de roles (puede ser lista vacía)
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.roles.read
+//   - 500: error de base de datos
+//
 // ListRoles handles GET /admin/roles.
 //
 // @Summary     Listar roles
@@ -720,6 +910,20 @@ func (h *AdminHandler) ListRoles(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(paginatedResponse(data, page, pageSize, total))
 }
 
+// CreateRole maneja POST /admin/roles.
+//
+// Crea un nuevo rol dentro de la aplicación identificada por X-App-Key.
+// Si la aplicación no está en Locals (falla del middleware AppKey) rechaza
+// la operación con 401. El campo description es opcional.
+//
+// Códigos HTTP posibles:
+//   - 201: rol creado exitosamente
+//   - 400: body inválido o campo "name" vacío
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.roles.write
+//   - 409: ya existe un rol con ese nombre en la aplicación
+//   - 500: error interno
+//
 // CreateRole handles POST /admin/roles.
 //
 // @Summary     Crear rol
@@ -768,6 +972,19 @@ func (h *AdminHandler) CreateRole(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(role)
 }
 
+// GetRole maneja GET /admin/roles/:id.
+//
+// Retorna el detalle de un rol incluyendo la lista de permisos asignados y el
+// número de usuarios que tienen ese rol activo. Útil para mostrar la vista de
+// detalle en el panel de administración antes de editar o eliminar el rol.
+//
+// Códigos HTTP posibles:
+//   - 200: detalle del rol con permisos y users_count
+//   - 400: UUID inválido
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.roles.read
+//   - 404: rol no encontrado
+//
 // GetRole handles GET /admin/roles/:id.
 //
 // @Summary     Obtener rol
@@ -809,6 +1026,20 @@ func (h *AdminHandler) GetRole(c *fiber.Ctx) error {
 	})
 }
 
+// UpdateRole maneja PUT /admin/roles/:id.
+//
+// Actualiza el nombre y/o descripción de un rol. Los roles de sistema (is_system=true)
+// pueden recibir actualizaciones de descripción pero no de nombre, según la
+// lógica implementada en RoleService.
+//
+// Códigos HTTP posibles:
+//   - 200: rol actualizado
+//   - 400: UUID inválido o body malformado
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.roles.write
+//   - 404: rol no encontrado
+//   - 500: error interno
+//
 // UpdateRole handles PUT /admin/roles/:id.
 //
 // @Summary     Actualizar rol
@@ -856,6 +1087,20 @@ func (h *AdminHandler) UpdateRole(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(role)
 }
 
+// DeleteRole maneja DELETE /admin/roles/:id.
+//
+// Desactiva un rol estableciendo is_active=false (borrado lógico). Los roles
+// de sistema (is_system=true) no pueden eliminarse. Los usuarios que tenían
+// ese rol dejan de obtener los permisos asociados en su próxima verificación
+// de autorización, ya que el caché de permisos se invalida.
+//
+// Códigos HTTP posibles:
+//   - 204: rol desactivado, sin cuerpo en la respuesta
+//   - 400: UUID inválido
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.roles.write o intento de eliminar rol de sistema
+//   - 500: error interno
+//
 // DeleteRole handles DELETE /admin/roles/:id.
 //
 // @Summary     Eliminar rol
@@ -891,6 +1136,21 @@ func (h *AdminHandler) DeleteRole(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+// AddRolePermission maneja POST /admin/roles/:id/permissions.
+//
+// Asigna uno o más permisos a un rol en una sola petición. Itera sobre
+// permission_ids y llama al servicio por cada uno. Si alguna asignación falla
+// (ej. permiso ya asignado o no encontrado), la operación se detiene y retorna
+// el error correspondiente; las asignaciones previas del mismo batch no se revierten.
+//
+// Códigos HTTP posibles:
+//   - 201: permisos asignados con el conteo {"assigned": N}
+//   - 400: UUID de rol inválido o body malformado
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.roles.write
+//   - 409: algún permiso ya estaba asignado al rol
+//   - 500: error interno
+//
 // AddRolePermission handles POST /admin/roles/:id/permissions.
 //
 // @Summary     Agregar permisos a rol
@@ -937,6 +1197,20 @@ func (h *AdminHandler) AddRolePermission(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"assigned": len(body.PermissionIDs)})
 }
 
+// RemoveRolePermission maneja DELETE /admin/roles/:id/permissions/:pid.
+//
+// Elimina la relación entre un rol y un permiso. El parámetro :pid es el ID
+// del permiso (no del registro de la tabla intermedia). Esto afecta a todos
+// los usuarios que tengan ese rol, quienes pierden el permiso en su próxima
+// verificación de autorización.
+//
+// Códigos HTTP posibles:
+//   - 204: permiso removido del rol, sin cuerpo en la respuesta
+//   - 400: UUID inválido en :id o :pid
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.roles.write
+//   - 500: error interno
+//
 // RemoveRolePermission handles DELETE /admin/roles/:id/permissions/:pid.
 //
 // @Summary     Remover permiso de rol
@@ -979,6 +1253,18 @@ func (h *AdminHandler) RemoveRolePermission(c *fiber.Ctx) error {
 
 // ---- PERMISSION ENDPOINTS ----
 
+// ListPermissions maneja GET /admin/permissions.
+//
+// Retorna la lista paginada de permisos. Si el middleware AppKey inyectó una
+// aplicación, filtra los permisos de esa aplicación. Los permisos siguen el
+// formato de código punteado: "<app>.<modulo>.<accion>" (ej: "erp.reportes.read").
+//
+// Códigos HTTP posibles:
+//   - 200: lista paginada de permisos (puede ser lista vacía)
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.permissions.read
+//   - 500: error de base de datos
+//
 // ListPermissions handles GET /admin/permissions.
 //
 // @Summary     Listar permisos
@@ -1013,6 +1299,21 @@ func (h *AdminHandler) ListPermissions(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(paginatedResponse(perms, page, pageSize, total))
 }
 
+// CreatePermission maneja POST /admin/permissions.
+//
+// Crea un nuevo permiso dentro de la aplicación identificada por X-App-Key.
+// El campo scope_type determina el alcance del permiso y acepta los valores:
+// "global", "module", "resource" o "action". El código del permiso debe ser
+// único dentro de la aplicación.
+//
+// Códigos HTTP posibles:
+//   - 201: permiso creado exitosamente
+//   - 400: body inválido, campos code o scope_type vacíos
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.permissions.write
+//   - 409: ya existe un permiso con ese código en la aplicación
+//   - 500: error interno
+//
 // CreatePermission handles POST /admin/permissions.
 //
 // @Summary     Crear permiso
@@ -1062,6 +1363,21 @@ func (h *AdminHandler) CreatePermission(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(perm)
 }
 
+// DeletePermission maneja DELETE /admin/permissions/:id.
+//
+// Elimina físicamente un permiso del sistema. La operación falla (retorna error)
+// si el permiso está asignado a algún rol o usuario, para evitar huérfanos en
+// la tabla de autorización. El servicio verifica estas dependencias antes de
+// eliminar.
+//
+// Códigos HTTP posibles:
+//   - 204: permiso eliminado, sin cuerpo en la respuesta
+//   - 400: UUID inválido
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.permissions.write
+//   - 409: el permiso está en uso (asignado a roles o usuarios)
+//   - 500: error interno
+//
 // DeletePermission handles DELETE /admin/permissions/:id.
 //
 // @Summary     Eliminar permiso
@@ -1099,6 +1415,19 @@ func (h *AdminHandler) DeletePermission(c *fiber.Ctx) error {
 
 // ---- COST CENTER ENDPOINTS ----
 
+// ListCostCenters maneja GET /admin/cost-centers.
+//
+// Retorna la lista paginada de centros de costo. Si el middleware AppKey inyectó
+// una aplicación, filtra los centros de costo de esa aplicación. Los centros de
+// costo son unidades organizacionales usadas para restringir el alcance de
+// acciones de los usuarios (ej. un supervisor solo puede operar en su ceco).
+//
+// Códigos HTTP posibles:
+//   - 200: lista paginada de centros de costo
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.cost_centers.read
+//   - 500: error de base de datos
+//
 // ListCostCenters handles GET /admin/cost-centers.
 //
 // @Summary     Listar centros de costo
@@ -1133,6 +1462,20 @@ func (h *AdminHandler) ListCostCenters(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(paginatedResponse(ccs, page, pageSize, total))
 }
 
+// CreateCostCenter maneja POST /admin/cost-centers.
+//
+// Crea un nuevo centro de costo en la aplicación identificada por X-App-Key.
+// Los campos code y name son obligatorios. El code debe ser único dentro de
+// la aplicación y sirve como identificador legible (ej. "CC-001", "RRHH").
+//
+// Códigos HTTP posibles:
+//   - 201: centro de costo creado exitosamente
+//   - 400: body inválido o campos code/name vacíos
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.cost_centers.write
+//   - 409: ya existe un centro de costo con ese código
+//   - 500: error interno
+//
 // CreateCostCenter handles POST /admin/cost-centers.
 //
 // @Summary     Crear centro de costo
@@ -1181,6 +1524,20 @@ func (h *AdminHandler) CreateCostCenter(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(cc)
 }
 
+// UpdateCostCenter maneja PUT /admin/cost-centers/:id.
+//
+// Actualiza el nombre y/o estado activo de un centro de costo. El valor por
+// defecto de is_active es true para evitar que una omisión accidental desactive
+// el ceco. El código del centro de costo no puede modificarse después de la creación.
+//
+// Códigos HTTP posibles:
+//   - 200: centro de costo actualizado
+//   - 400: UUID inválido o body malformado
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.cost_centers.write
+//   - 404: centro de costo no encontrado
+//   - 500: error interno
+//
 // UpdateCostCenter handles PUT /admin/cost-centers/:id.
 //
 // @Summary     Actualizar centro de costo
@@ -1231,6 +1588,24 @@ func (h *AdminHandler) UpdateCostCenter(c *fiber.Ctx) error {
 
 // ---- AUDIT LOGS ENDPOINT ----
 
+// ListAuditLogs maneja GET /admin/audit-logs.
+//
+// Retorna la lista paginada de eventos de auditoría con soporte para múltiples
+// filtros combinables: tipo de evento, usuario afectado, actor que ejecutó la
+// acción, aplicación, rango de fechas y resultado (éxito/fallo).
+//
+// Los filtros UUID (user_id, actor_id, application_id) se ignoran silenciosamente
+// si no son UUIDs válidos para evitar errores de validación innecesarios.
+// Las fechas deben estar en formato RFC3339 (ej. 2025-01-01T00:00:00Z).
+//
+// Los logs de auditoría son inmutables: solo se pueden leer, nunca modificar.
+//
+// Códigos HTTP posibles:
+//   - 200: lista paginada de eventos de auditoría
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.audit.read
+//   - 500: error de base de datos
+//
 // ListAuditLogs handles GET /admin/audit-logs.
 //
 // @Summary     Listar registros de auditoría
@@ -1304,6 +1679,18 @@ func (h *AdminHandler) ListAuditLogs(c *fiber.Ctx) error {
 
 // ---- APPLICATION ENDPOINTS ----
 
+// ListApplications maneja GET /admin/applications.
+//
+// Retorna la lista paginada de aplicaciones cliente registradas en Sentinel.
+// Soporta filtrado por búsqueda de texto (nombre o slug) y por estado activo.
+// El campo is_system se calcula en memoria: es true si el slug es "system".
+//
+// Códigos HTTP posibles:
+//   - 200: lista paginada de aplicaciones
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.applications.read
+//   - 500: error de base de datos
+//
 // ListApplications handles GET /admin/applications.
 //
 // @Summary     Listar aplicaciones
@@ -1360,6 +1747,19 @@ func (h *AdminHandler) ListApplications(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(paginatedResponse(data, page, pageSize, total))
 }
 
+// GetApplication maneja GET /admin/applications/:id.
+//
+// Retorna el detalle de una aplicación incluyendo su clave secreta (secret_key).
+// La clave secreta solo se expone en este endpoint y en CreateApplication/RotateApplicationKey,
+// nunca en listas. Solo administradores con el permiso correspondiente pueden acceder.
+//
+// Códigos HTTP posibles:
+//   - 200: detalle de la aplicación con secret_key
+//   - 400: UUID inválido
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.applications.read
+//   - 404: aplicación no encontrada
+//
 // GetApplication handles GET /admin/applications/:id.
 //
 // @Summary     Obtener aplicación
@@ -1400,6 +1800,28 @@ func (h *AdminHandler) GetApplication(c *fiber.Ctx) error {
 	})
 }
 
+// CreateApplication maneja POST /admin/applications.
+//
+// Registra una nueva aplicación cliente en Sentinel. Genera automáticamente
+// una clave secreta aleatoria de 32 bytes (Base64 URL-safe sin padding) usando
+// crypto/rand para asegurar entropía criptográfica. El slug debe seguir el
+// formato kebab-case validado por slugRegexp.
+//
+// La clave secreta se devuelve en el body de esta respuesta y es la única
+// oportunidad de verla en texto plano; si se pierde se debe rotar con
+// POST /admin/applications/:id/rotate-key.
+//
+// Maneja el error de unicidad de PostgreSQL (código 23505) para responder
+// 409 en lugar de 500 cuando el nombre ya existe.
+//
+// Códigos HTTP posibles:
+//   - 201: aplicación creada con secret_key en texto plano
+//   - 400: body inválido, campos faltantes o slug con formato incorrecto
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.applications.write
+//   - 409: ya existe una aplicación con ese slug o nombre
+//   - 500: error interno o fallo de generación de entropía
+//
 // CreateApplication handles POST /admin/applications.
 //
 // @Summary     Crear aplicación
@@ -1472,6 +1894,21 @@ func (h *AdminHandler) CreateApplication(c *fiber.Ctx) error {
 	})
 }
 
+// UpdateApplication maneja PUT /admin/applications/:id.
+//
+// Actualiza el nombre y/o estado activo de una aplicación. Protege la aplicación
+// del sistema (slug="system") de modificaciones: si se intenta actualizar retorna 403.
+// Los campos omitidos conservan sus valores actuales (partial update con defaults
+// cargados desde la base de datos antes de aplicar el body).
+//
+// Códigos HTTP posibles:
+//   - 200: aplicación actualizada
+//   - 400: UUID inválido o body malformado
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.applications.write o intento de modificar app del sistema
+//   - 404: aplicación no encontrada
+//   - 500: error interno
+//
 // UpdateApplication handles PUT /admin/applications/:id.
 //
 // @Summary     Actualizar aplicación
@@ -1540,6 +1977,28 @@ func (h *AdminHandler) UpdateApplication(c *fiber.Ctx) error {
 	})
 }
 
+// RotateApplicationKey maneja POST /admin/applications/:id/rotate-key.
+//
+// Genera una nueva clave secreta aleatoria para la aplicación e invalida la
+// anterior inmediatamente. Después de rotar la clave, todas las instancias
+// de la aplicación cliente deben actualizar su configuración con la nueva clave
+// o comenzarán a recibir 401 en sus peticiones.
+//
+// La aplicación del sistema (slug="system") no puede rotar su clave por esta vía
+// para prevenir que un ataque que obtenga acceso al panel admin pueda bloquear
+// el acceso total al sistema.
+//
+// La nueva clave se devuelve en texto plano en la respuesta y es la única
+// oportunidad de verla; no se puede recuperar después.
+//
+// Códigos HTTP posibles:
+//   - 200: nueva clave generada con campo "secret_key"
+//   - 400: UUID inválido
+//   - 401: JWT o X-App-Key inválidos
+//   - 403: sin permiso admin.applications.write o intento de rotar app del sistema
+//   - 404: aplicación no encontrada
+//   - 500: error interno o fallo de generación de entropía
+//
 // RotateApplicationKey handles POST /admin/applications/:id/rotate-key.
 //
 // @Summary     Rotar clave de aplicación
@@ -1585,6 +2044,10 @@ func (h *AdminHandler) RotateApplicationKey(c *fiber.Ctx) error {
 	})
 }
 
+// generateAppSecretKey genera una clave secreta criptográficamente aleatoria
+// de 32 bytes codificada en Base64 URL-safe sin padding (43 caracteres).
+// Usa crypto/rand para garantizar entropía criptográfica real; si el sistema
+// operativo no puede proveer entropía suficiente retorna error.
 func generateAppSecretKey() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -1593,7 +2056,15 @@ func generateAppSecretKey() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-// mapServiceError maps service errors to HTTP responses and logs accordingly.
+// mapServiceError traduce los errores del dominio de servicios admin a respuestas
+// HTTP con el código de estado apropiado. Centraliza el mapeo para mantener los
+// handlers limpios de lógica de traducción de errores.
+//
+// Mapeo de errores:
+//   - ErrPasswordPolicy (wrap) -> 400 VALIDATION_ERROR  (política de contraseña no cumplida)
+//   - ErrNotFound              -> 404 NOT_FOUND         (recurso no encontrado en la BD)
+//   - ErrConflict              -> 409 CONFLICT          (unicidad violada: nombre/código duplicado)
+//   - cualquier otro error     -> 500 INTERNAL_ERROR    (error inesperado, se loguea como ERROR)
 func (h *AdminHandler) mapServiceError(c *fiber.Ctx, err error) error {
 	if err == nil {
 		return nil
@@ -1602,21 +2073,25 @@ func (h *AdminHandler) mapServiceError(c *fiber.Ctx, err error) error {
 	msg := err.Error()
 	switch {
 	case isPasswordPolicyError(err):
+		// La nueva contraseña no cumple las reglas de complejidad del sistema.
 		h.logger.Debug("admin: password policy violation",
 			"request_id", requestID,
 		)
 		return respondError(c, fiber.StatusBadRequest, "VALIDATION_ERROR", msg)
 	case errors.Is(err, service.ErrNotFound):
+		// El recurso solicitado no existe en la base de datos.
 		h.logger.Debug("admin: resource not found",
 			"request_id", requestID,
 		)
 		return respondError(c, fiber.StatusNotFound, "NOT_FOUND", "resource not found")
 	case errors.Is(err, service.ErrConflict):
+		// Violación de restricción de unicidad (nombre, código, slug, etc.).
 		h.logger.Info("admin: resource conflict",
 			"request_id", requestID,
 		)
 		return respondError(c, fiber.StatusConflict, "CONFLICT", "resource already exists")
 	default:
+		// Error inesperado: se loguea con nivel ERROR para alertar al equipo de operaciones.
 		h.logger.Error("admin: internal server error",
 			"error", err,
 			"request_id", requestID,

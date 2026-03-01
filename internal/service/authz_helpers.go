@@ -1,8 +1,7 @@
+// authz_helpers.go expone la lógica interna de autorización como funciones exportadas
+// para que puedan ser probadas desde el paquete service_test sin acceso a la base de datos.
+// Estas funciones replican el comportamiento de los métodos privados de AuthzService.
 package service
-
-// authz_helpers.go exposes internal authorization logic as exported functions
-// so they can be tested from the service_test package.
-// These functions mirror the private methods in authz_service.go.
 
 import (
 	"sort"
@@ -10,9 +9,20 @@ import (
 	redisrepo "github.com/enunezf/sentinel/internal/repository/redis"
 )
 
-// CheckHasPermission evaluates if a user context has a given permission code,
-// optionally checking a cost-center constraint. This is the exported test-facing
-// version of the private hasPermission + hasCostCenter combination in AuthzService.
+// CheckHasPermission evalúa si un contexto de usuario contiene el código de permiso
+// indicado, con la restricción opcional de centro de costo.
+//
+// Es la versión exportada y testeable de la combinación privada
+// hasPermission + hasCostCenter de AuthzService.
+//
+// Parámetros:
+//   - uc: contexto de usuario obtenido desde Redis o construido desde PostgreSQL.
+//   - permCode: código del permiso a verificar (ej: "admin.users.read").
+//   - costCenterCode: código del centro de costo requerido; si es vacío, no se aplica
+//     la restricción de centro de costo.
+//
+// Retorna true solo si el permiso existe y, cuando se especifica, el centro de costo
+// también está asignado al usuario.
 func CheckHasPermission(uc *redisrepo.UserContext, permCode, costCenterCode string) bool {
 	hasPermission := false
 	for _, p := range uc.Permissions {
@@ -24,9 +34,11 @@ func CheckHasPermission(uc *redisrepo.UserContext, permCode, costCenterCode stri
 	if !hasPermission {
 		return false
 	}
+	// Si no se requiere un centro de costo específico, el permiso es suficiente.
 	if costCenterCode == "" {
 		return true
 	}
+	// Verificar que el centro de costo esté asignado al usuario.
 	for _, cc := range uc.CostCenters {
 		if cc == costCenterCode {
 			return true
@@ -35,8 +47,18 @@ func CheckHasPermission(uc *redisrepo.UserContext, permCode, costCenterCode stri
 	return false
 }
 
-// MergePermissions returns the union of two permission slices without duplicates.
-// Used in tests to verify the union logic that buildUserContext applies.
+// MergePermissions devuelve la unión sin duplicados de dos slices de permisos,
+// ordenada lexicográficamente. Replica la lógica de unión que buildUserContext
+// aplica al combinar permisos de roles con permisos individuales.
+//
+// Se usa en tests para verificar que la unión sea correcta sin necesidad de
+// una base de datos.
+//
+// Parámetros:
+//   - rolePerms: permisos heredados de roles activos.
+//   - individualPerms: permisos asignados directamente al usuario.
+//
+// Retorna un slice ordenado con todos los permisos únicos de ambas fuentes.
 func MergePermissions(rolePerms, individualPerms []string) []string {
 	set := make(map[string]struct{})
 	for _, p := range rolePerms {
@@ -53,8 +75,17 @@ func MergePermissions(rolePerms, individualPerms []string) []string {
 	return result
 }
 
-// CanonicalJSONPayload is the exported version of canonicalJSONPayload, used
-// in authz_service_test.go to verify signature and version logic.
+// CanonicalJSONPayload es la versión exportada de canonicalJSONPayload, usada en
+// authz_service_test.go para verificar que la lógica de firma y cálculo de versión
+// sea correcta. Recibe exactamente los mismos parámetros que la función interna.
+//
+// Parámetros:
+//   - application: slug de la aplicación.
+//   - generatedAt: instante de generación en formato RFC3339.
+//   - permissions: mapa de permisos con sus roles y descripción.
+//   - costCenters: mapa de centros de costo.
+//
+// Retorna los bytes del JSON canónico (claves ordenadas, sin espacios).
 func CanonicalJSONPayload(application, generatedAt string, permissions map[string]PermissionMapEntry, costCenters map[string]CostCenterMapEntry) []byte {
 	return canonicalJSONPayload(application, generatedAt, permissions, costCenters)
 }
